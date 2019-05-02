@@ -1,0 +1,22 @@
+{
+  "name": "sbanken-cli",
+  "version": "0.0.1",
+  "description": "A command line interface to do banking with sbanken.",
+  "main": "./src/node-sbanken.js",
+  "author": "Thomas Malt <thomas@malt.no>",
+  "license": "MIT",
+  "private": false,
+  "bin": {
+    "sbanken": "./src/index.js"
+  },
+  "scripts": {
+    "sbanken": "node ./src/index.js"
+  },
+  "devDependencies": {
+    "prettier": "1.17.0"
+  },
+  "dependencies": {
+    "btoa": "^1.2.1",
+    "node-fetch": "^2.5.0"
+  }
+}
