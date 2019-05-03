@@ -14,12 +14,14 @@ class Sbanken {
    * }
    *
    * @param {*} credentials
+   * @param {*} options
    */
-  constructor(credentials = {}) {
+  constructor(credentials = {}, options = { verbose: false }) {
     if (!this.__testCredentials(credentials)) {
       throw new Error('Credentials must be provided.');
     }
     this.credentials = credentials;
+    this.opts = options;
 
     this.clientCredentials = btoa(
       credentials.clientId + ':' + credentials.secret
@@ -38,6 +40,10 @@ class Sbanken {
     };
   }
 
+  options(opts = {}) {
+    this.opts = Object.assign(this.opts, opts);
+  }
+
   /**
    * @returns Promise
    */
@@ -45,75 +51,25 @@ class Sbanken {
     return fsp
       .access(this.cache.file, fs.constants.R_OK)
       .then(() => {
-        console.log('Found ', this.cache.file);
+        if (this.opts.verbose) {
+          console.info('Found cached access token:', this.cache.file);
+        }
         return fsp.readFile(this.cache.file);
       })
       .then(data => JSON.parse(data))
       .then(data => {
-        const now = new Date();
-        const then = new Date(data.date);
-        console.log('now', now);
-        console.log('then', then);
+        if (this.__isAccessTokenFresh(data)) {
+          return data;
+        } else {
+          if (this.opts.verbose) {
+            console.info('Current access token stale. Need to fetch new one.');
+          }
 
-        const diff =
-          now.getTime() - (then.getTime() + (data.expires_in - 300) * 1000);
-
-        console.log('diff', diff);
-        if (diff > 0) {
-          throw new Error('Current access token stale. Need to fetch new one.');
+          return this.refreshAccessToken();
         }
-
-        return data;
       })
       .catch(err => {
         console.log(err.message);
-
-        const params = new URLSearchParams();
-        params.append('grant_type', 'client_credentials');
-
-        return fetch(this.urls.auth, {
-          method: 'post',
-          body: params,
-          headers: {
-            Accept: 'application/json',
-            Authorization: `Basic ${this.clientCredentials}`,
-            customerId: this.credentials.userId,
-          },
-        })
-          .then(res => {
-            if (res.ok) {
-              return res.json();
-            } else {
-              throw new Error(`${res.status} ${res.statusText}`);
-            }
-          })
-          .then(json => {
-            json.date = new Date();
-            return json;
-          })
-          .then(json => {
-            try {
-              if (!fs.existsSync(`${__dirname}/.cache`)) {
-                fs.mkdirSync(`${__dirname}/.cache`);
-              }
-
-              fs.writeFileSync(
-                `${__dirname}/.cache/accesstoken.json`,
-                JSON.stringify(json),
-                {
-                  mode: 0o600,
-                }
-              );
-            } catch (err) {
-              throw err;
-            }
-
-            return json;
-          })
-          .catch(err => {
-            console.log('Got error');
-            console.error(err);
-          });
       });
   }
 
@@ -122,7 +78,7 @@ class Sbanken {
       .then(data =>
         fetch(this.urls.accounts, {
           headers: {
-            Authorization: `Bearer ${data.xaccess_token}`,
+            Authorization: `Bearer ${data.access_token}`,
             Accept: 'application/json',
             customerId: this.credentials.userId,
           },
@@ -130,20 +86,82 @@ class Sbanken {
       )
       .then(res => {
         if (res.ok) {
-          console.log('result:', res.status, res.statusText);
           return res.json();
         } else {
-          res.text().then(msg => {
-            throw new Error(res.status + ' ' + res.statusText + '. ' + msg);
-          });
+          throw new Error(res.status + ' ' + res.statusText);
         }
-      })
-      .then(json => {
-        console.log(json);
       })
       .catch(err => {
         console.error('Error:', err.message);
       });
+  }
+
+  refreshAccessToken() {
+    const params = new URLSearchParams();
+    params.append('grant_type', 'client_credentials');
+
+    return fetch(this.urls.auth, {
+      method: 'post',
+      body: params,
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Basic ${this.clientCredentials}`,
+        customerId: this.credentials.userId,
+      },
+    })
+      .then(res => {
+        if (res.ok) {
+          return res.json();
+        } else {
+          throw new Error(`${res.status} ${res.statusText}`);
+        }
+      })
+      .then(json => {
+        json.date = new Date();
+        return json;
+      })
+      .then(json => {
+        try {
+          if (!fs.existsSync(`${__dirname}/.cache`)) {
+            fs.mkdirSync(`${__dirname}/.cache`);
+          }
+
+          fs.writeFileSync(
+            `${__dirname}/.cache/accesstoken.json`,
+            JSON.stringify(json),
+            {
+              mode: 0o600,
+            }
+          );
+        } catch (err) {
+          throw err;
+        }
+
+        return json;
+      })
+      .catch(err => {
+        console.log('Got error');
+        console.error(err);
+      });
+  }
+
+  __isAccessTokenFresh(data) {
+    const then = new Date(data.date);
+    const now = new Date();
+
+    if (this.opts.verbose) {
+      console.info('Validating current access token:');
+      console.info('  then', then);
+      console.info('  now', now);
+    }
+    if (then.getTime() + (data.expires_in - 300) * 1000 > now.getTime()) {
+      if (this.opts.verbose) {
+        console.info('Token is still fresh.');
+      }
+      return true;
+    }
+
+    return false;
   }
 
   __testCredentials(c) {
