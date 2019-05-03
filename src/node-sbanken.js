@@ -48,6 +48,10 @@ class Sbanken {
    * @returns Promise
    */
   getAccessToken() {
+    if (!fs.existsSync(this.cache.file)) {
+      return this.refreshAccessToken();
+    }
+
     return fsp
       .access(this.cache.file, fs.constants.R_OK)
       .then(() => {
