@@ -27,7 +27,6 @@ program
   .command('accounts')
   .description('List all accounts')
   .action(() => {
-    sbanken.options({ verbose: program.verbose });
     if (program.verbose) {
       console.info('Command: List all accounts.');
     }
@@ -58,19 +57,4 @@ program
   });
 
 program.parse(process.argv);
-
-program.on('command:*', () => {
-  console.error(
-    'Unknown command: %s\nSee --help for a list of available commands.',
-    program.args.join(' ')
-  );
-  process.exit(1);
-});
-
-// console.log(`${name} - ${description} - Version: ${version}`);
-
-// sbanken.hello();
-
-// sbanken.accounts().then(json => {
-//   console.table(json.items);
-// });
+sbanken.options({ verbose: program.verbose });
