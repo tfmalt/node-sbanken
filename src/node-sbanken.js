@@ -1,3 +1,4 @@
+const log = require('./log');
 const btoa = require('btoa');
 const fetch = require('node-fetch');
 const { URLSearchParams } = require('url');
@@ -29,9 +30,12 @@ class Sbanken {
 
     this.urls = {
       auth: 'https://auth.sbanken.no/IdentityServer/connect/token',
-      accounts: 'https://api.sbanken.no/bank/api/v1/accounts',
-      transactions: 'https://api.sbanken.no/bank/api/v1/transactions',
-      customers: 'https://api.sbanken.no/customers/api/v1/customers',
+      accounts: { v1: 'https://api.sbanken.no/bank/api/v1/accounts' },
+      transactions: { v1: 'https://api.sbanken.no/bank/api/v1/transactions' },
+      customers: {
+        v1: 'https://api.sbanken.no/customers/api/v1/customers',
+        v2: 'https://api.sbanken.no/customers/api/v2/customers',
+      },
     };
 
     this.cache = {
@@ -48,6 +52,9 @@ class Sbanken {
    * @returns Promise
    */
   getAccessToken() {
+    if (this.opts.verbose) {
+      log.info('Fetching access token');
+    }
     if (!fs.existsSync(this.cache.file)) {
       return this.refreshAccessToken();
     }
@@ -56,7 +63,8 @@ class Sbanken {
       .access(this.cache.file, fs.constants.R_OK)
       .then(() => {
         if (this.opts.verbose) {
-          console.info('Found cached access token:', this.cache.file);
+          log.info('Found cached access token:');
+          log.info('  ', this.cache.file);
         }
         return fsp.readFile(this.cache.file);
       })
@@ -66,41 +74,113 @@ class Sbanken {
           return data;
         } else {
           if (this.opts.verbose) {
-            console.info('Current access token stale. Need to fetch new one.');
+            log.info('Current access token stale.');
           }
 
           return this.refreshAccessToken();
         }
       })
       .catch(err => {
-        console.log(err.message);
+        log.error(err.message);
+        process.exit(1);
       });
   }
 
-  accounts() {
-    return this.getAccessToken()
-      .then(data =>
-        fetch(this.urls.accounts, {
-          headers: {
-            Authorization: `Bearer ${data.access_token}`,
-            Accept: 'application/json',
-            customerId: this.credentials.userId,
-          },
-        })
-      )
-      .then(res => {
+  /**
+   * Fetching customer data
+   *
+   * @param {string} version
+   */
+  customers(version = 'v1') {
+    return this.getAccessToken().then(data => {
+      if (this.opts.verbose) {
+        log.info('Fetching:', this.urls.customers[version]);
+      }
+
+      return fetch(this.urls.customers[version], {
+        headers: {
+          Authorization: `Bearer ${data.access_token}`,
+          Accept: 'application/json',
+          customerId: this.credentials.userId,
+        },
+      }).then(res => {
+        if (this.opts.verbose) {
+          log.info('Got response from server:', res.status, res.statusText);
+        }
+
         if (res.ok) {
           return res.json();
         } else {
           throw new Error(res.status + ' ' + res.statusText);
         }
+      });
+    });
+  }
+
+  accounts() {
+    return this.getAccessToken()
+      .then(data => {
+        if (this.opts.verbose) {
+          log.info('Fetching accounts:', this.urls.accounts.v1);
+        }
+        return fetch(this.urls.accounts.v1, {
+          headers: {
+            Authorization: `Bearer ${data.access_token}`,
+            Accept: 'application/json',
+            customerId: this.credentials.userId,
+          },
+        });
+      })
+      .then(res => {
+        if (res.ok) {
+          if (this.opts.verbose) {
+            log.info('  Status code:', res.status, res.statusText);
+          }
+
+          return res.json();
+        } else {
+          if (this.opts.verbose) {
+            log.error('  Status code:', res.status, res.statusText);
+          }
+
+          throw new Error(res.status + ' ' + res.statusText);
+        }
       })
       .catch(err => {
-        console.error('Error:', err.message);
+        log.error(err.message);
+        process.exit(1);
       });
   }
 
+  transactions(options) {
+    return this.getAccessToken().then(data => {
+      const url = `${this.urls.transactions.v1}/${options.accountId}`;
+
+      if (this.opts.verbose) {
+        log.info('Fetching transactions:', url);
+      }
+
+      return fetch(url, {
+        headers: {
+          Authorization: `Bearer ${data.access_token}`,
+          Accept: 'application/json',
+          customerId: this.credentials.userId,
+        },
+      })
+        .then(res => res.json())
+        .catch(error => {
+          log.error('Got error:');
+          log.error(error.message);
+          process.exit(1);
+        });
+    });
+  }
+
   refreshAccessToken() {
+    if (this.opts.verbose) {
+      log.info('Fetching new access token.');
+    }
+
     const params = new URLSearchParams();
     params.append('grant_type', 'client_credentials');
 
@@ -114,6 +194,10 @@ class Sbanken {
       },
     })
       .then(res => {
+        if (this.opts.verbose) {
+          log.info('Got response from server:', res.status, res.statusText);
+        }
+
         if (res.ok) {
           return res.json();
         } else {
@@ -121,10 +205,16 @@ class Sbanken {
         }
       })
       .then(json => {
+        if (this.opts.verbose) {
+          log.info('Adding date to response');
+        }
         json.date = new Date();
         return json;
       })
       .then(json => {
+        if (this.opts.verbose) {
+          log.info('Storing access token in cache.');
+        }
         try {
           if (!fs.existsSync(`${__dirname}/.cache`)) {
             fs.mkdirSync(`${__dirname}/.cache`);
@@ -144,8 +234,8 @@ class Sbanken {
         return json;
       })
       .catch(err => {
-        console.log('Got error');
-        console.error(err);
+        log.error('Received error from Sbanken:', err.message);
+        process.exit(1);
       });
   }
 
@@ -153,18 +243,15 @@ class Sbanken {
     const then = new Date(data.date);
     const now = new Date();
 
-    if (this.opts.verbose) {
-      console.info('Validating current access token:');
-      console.info('  then', then);
-      console.info('  now', now);
-    }
     if (then.getTime() + (data.expires_in - 300) * 1000 > now.getTime()) {
       if (this.opts.verbose) {
-        console.info('Token is still fresh.');
+        log.info('Token is still fresh.');
       }
       return true;
     }
-
+    if (this.opts.verbose) {
+      log.info('Token is stale.');
+    }
     return false;
   }
 
