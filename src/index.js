@@ -38,12 +38,7 @@ program
       json.items
         .filter(item => item.name.match(regex))
         .sort((a, b) => a.name.localeCompare(b.name))
-        .forEach(item => {
-          log.log(
-            item.name.padEnd(32),
-            chalk.white.bold(`${item.balance.toFixed(2)} kr`.padStart(12))
-          );
-        });
+        .forEach(item => printAccountInfoRow(item));
     });
   });
 
@@ -188,9 +183,101 @@ program
       });
   });
 
+program
+  .command('transfer <amount>')
+  .description('Transfer money between two accounts.')
+  .option('-f --from <name|account>')
+  .option('-t --to <name|account>')
+  .action((amount, options) => {
+    if (program.verbose)
+      log.info('Running command transfer', options.from, options.to, amount);
+
+    sbanken
+      .accounts()
+      .then(accounts => {
+        const froms = accounts.items.filter(i =>
+          i.name.match(new RegExp(options.from, 'ui'))
+        );
+        if (froms.length != 1) {
+          console.error(
+            'Did not get correct match for from account. Make from specific.'
+          );
+          process.exit(1);
+        }
+
+        const tos = accounts.items.filter(i =>
+          i.name.match(new RegExp(options.to, 'ui'))
+        );
+        if (tos.length != 1) {
+          console.error(
+            'Did not get correct match for to account. Make to specific.'
+          );
+          process.exit(1);
+        }
+
+        return { from: froms[0], to: tos[0], amount: amount };
+      })
+      .then(opts => {
+        console.log(
+          'Transferring',
+          chalk.white.bold(`${parseFloat(opts.amount).toFixed(2)} kr`),
+          chalk`from {red.bold ${opts.from.name}} ({yellow ${
+            opts.from.accountNumber
+          }})`,
+          chalk`to {green.bold ${opts.to.name}} ({yellow ${
+            opts.to.accountNumber
+          }})`
+        );
+        sbanken
+          .transfer(opts)
+          .then(res => {
+            if (res.ok) {
+              console.log(
+                chalk`{blue ${res.status}} {white.bold ${
+                  res.statusText
+                }} - Transfer successful`
+              );
+            } else if (res.status === 400) {
+              return res.json().then(json => {
+                console.log(
+                  chalk`{red ${res.status}} {white.bold ${res.statusText}} - ${
+                    json.errorMessage
+                  }`
+                );
+                process.exit(1);
+              });
+            }
+          })
+          .then(() => sbanken.accounts())
+          .then(accounts => {
+            accounts.items
+              .filter(i => {
+                if (
+                  i.accountId === opts.from.accountId ||
+                  i.accountId === opts.to.accountId
+                ) {
+                  return true;
+                }
+              })
+              .forEach(i => printAccountInfoRow(i));
+          });
+      });
+  });
 program.parse(process.argv);
 sbanken.options({ verbose: program.verbose });
 
+function printAccountInfoRow(account) {
+  console.log(
+    account.name.padEnd(32),
+    chalk.white.bold(`${account.available.toFixed(2)} kr`.padStart(15)),
+    chalk.yellow(`${account.balance.toFixed(2)} kr`.padStart(15))
+  );
+}
+
+/**
+ * Reads in credentials from the environments and sets up the credentials object
+ * Verify that credentials exist and prints an error if they do not.
+ */
 function setupCredentials() {
   if (process.env.SBANKEN_SECRET) {
     credentials.secret = process.env.SBANKEN_SECRET;
@@ -212,7 +299,9 @@ function setupCredentials() {
   ) {
     return true;
   } else {
-    log.error('You need to provide correct credentials for the app to work.');
+    console.log(
+      chalk`{red error} {white You need to provide correct credentials for the app to work.}`
+    );
     process.exit(1);
   }
 }
