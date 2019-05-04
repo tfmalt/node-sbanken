@@ -263,8 +263,13 @@ program
           });
       });
   });
+
 program.parse(process.argv);
 sbanken.options({ verbose: program.verbose });
+
+if (!process.argv.slice(2).length) {
+  program.help();
+}
 
 function printAccountInfoRow(account) {
   console.log(
