@@ -36,6 +36,7 @@ class Sbanken {
         v1: 'https://api.sbanken.no/customers/api/v1/customers',
         v2: 'https://api.sbanken.no/customers/api/v2/customers',
       },
+      transfer: { v1: 'https://api.sbanken.no/bank/api/v1/Transfers' },
     };
 
     this.cache = {
@@ -46,44 +47,6 @@ class Sbanken {
 
   options(opts = {}) {
     this.opts = Object.assign(this.opts, opts);
-  }
-
-  /**
-   * @returns Promise
-   */
-  getAccessToken() {
-    if (this.opts.verbose) {
-      log.info('Fetching access token');
-    }
-    if (!fs.existsSync(this.cache.file)) {
-      return this.refreshAccessToken();
-    }
-
-    return fsp
-      .access(this.cache.file, fs.constants.R_OK)
-      .then(() => {
-        if (this.opts.verbose) {
-          log.info('Found cached access token:');
-          log.info('  ', this.cache.file);
-        }
-        return fsp.readFile(this.cache.file);
-      })
-      .then(data => JSON.parse(data))
-      .then(data => {
-        if (this.__isAccessTokenFresh(data)) {
-          return data;
-        } else {
-          if (this.opts.verbose) {
-            log.info('Current access token stale.');
-          }
-
-          return this.refreshAccessToken();
-        }
-      })
-      .catch(err => {
-        log.error(err.message);
-        process.exit(1);
-      });
   }
 
   /**
@@ -152,6 +115,43 @@ class Sbanken {
       });
   }
 
+  transfer(options) {
+    return this.getAccessToken().then(data => {
+      const msg = `From ${options.from.name} to ${options.to.name}`.slice(
+        0,
+        30
+      );
+      const body = {
+        fromAccountId: options.from.accountId,
+        toAccountId: options.to.accountId,
+        message: msg,
+        amount: parseFloat(options.amount),
+      };
+
+      if (this.opts.verbose) log.info('Fetching:', this.urls.transfer.v1);
+      if (this.opts.verbose) log.debug('body:', JSON.stringify(body));
+      return fetch(this.urls.transfer.v1, {
+        method: 'post',
+        body: JSON.stringify(body),
+        headers: {
+          Authorization: `Bearer ${data.access_token}`,
+          Accept: 'application/json',
+          customerId: this.credentials.userId,
+          'Content-Type': 'application/json',
+        },
+      }).then(res => {
+        if (res.ok) return res;
+        if (res.status === 400) return res;
+
+        console.error(res.status, res.statusText);
+        return res.json().then(data => {
+          console.error(data);
+          process.exit(1);
+        });
+      });
+    });
+  }
+
   transactions(options) {
     return this.getAccessToken().then(data => {
       let url = `${this.urls.transactions.v1}/${options.accountId}`;
@@ -191,6 +191,44 @@ class Sbanken {
           process.exit(1);
         });
     });
+  }
+
+  /**
+   * @returns Promise
+   */
+  getAccessToken() {
+    if (this.opts.verbose) {
+      log.info('Fetching access token');
+    }
+    if (!fs.existsSync(this.cache.file)) {
+      return this.refreshAccessToken();
+    }
+
+    return fsp
+      .access(this.cache.file, fs.constants.R_OK)
+      .then(() => {
+        if (this.opts.verbose) {
+          log.info('Found cached access token:');
+          log.info('  ', this.cache.file);
+        }
+        return fsp.readFile(this.cache.file);
+      })
+      .then(data => JSON.parse(data))
+      .then(data => {
+        if (this.__isAccessTokenFresh(data)) {
+          return data;
+        } else {
+          if (this.opts.verbose) {
+            log.info('Current access token stale.');
+          }
+
+          return this.refreshAccessToken();
+        }
+      })
+      .catch(err => {
+        log.error(err.message);
+        process.exit(1);
+      });
   }
 
   refreshAccessToken() {

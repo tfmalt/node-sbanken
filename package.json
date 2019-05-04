@@ -1,6 +1,6 @@
 {
   "name": "sbanken-cli",
-  "version": "0.4.5",
+  "version": "0.5.1",
   "description": "A module wrapping the Sbanken APIs, and a command line tool to do banking with sbanken.",
   "keywords": [
     "api",
