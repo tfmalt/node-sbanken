@@ -154,7 +154,16 @@ class Sbanken {
 
   transactions(options) {
     return this.getAccessToken().then(data => {
-      const url = `${this.urls.transactions.v1}/${options.accountId}`;
+      let url = `${this.urls.transactions.v1}/${options.accountId}`;
+
+      const length = options.length || 1000;
+      url += `?length=${length}`;
+      if (options.from instanceof Date) {
+        url += `&startDate=${options.from.toISOString().slice(0, 10)}`;
+      }
+      if (options.to instanceof Date) {
+        url += `&endDate=${options.to.toISOString().slice(0, 10)}`;
+      }
 
       if (this.opts.verbose) {
         log.info('Fetching transactions:', url);
@@ -167,7 +176,15 @@ class Sbanken {
           customerId: this.credentials.userId,
         },
       })
-        .then(res => res.json())
+        .then(res => {
+          if (res.ok) return res.json();
+
+          console.debug(res.status, res.statusText);
+          return res
+            .json()
+            .then(data => console.debug(data.errorType, ':', data.errorMessage))
+            .then(() => process.exit(1));
+        })
         .catch(error => {
           log.error('Got error:');
           log.error(error.message);

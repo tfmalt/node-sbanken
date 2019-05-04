@@ -63,17 +63,20 @@ program
     }
     sbanken.customers(api).then(json => {
       const pad = 8;
-      log.log(
+      console.log(
         'name:'.padEnd(pad),
         chalk.white.bold(`${json.item.firstName} ${json.item.lastName}`)
       );
-      log.log('email:'.padEnd(pad), chalk.white.bold(json.item.emailAddress));
+      console.log(
+        'email:'.padEnd(pad),
+        chalk.white.bold(json.item.emailAddress)
+      );
       let phones = '';
       json.item.phoneNumbers.forEach(n => {
         phones += `+${n.countryCode} ${n.number}, `;
       });
-      log.log('phones:'.padEnd(pad), chalk.white.bold(phones));
-      log.log(
+      console.log('phones:'.padEnd(pad), chalk.white.bold(phones));
+      console.log(
         'address:'.padEnd(pad),
         chalk.white.bold(
           `${json.item.postalAddress.addressLine1}, ${
@@ -140,27 +143,30 @@ program
 
         const { accountId, name, accountNumber, balance } = account;
         // console.log(account);
-        console.log(
-          'name:',
-          chalk.white.bold(name),
-          ' account number:',
-          chalk.white.bold(accountNumber),
-          ' balance:',
-          chalk.white.bold(balance)
-        );
-        console.log(
-          'Date'.padEnd(11),
-          'Amount'.padStart(11),
-          ' Type'.padEnd(15),
-          'Description'.padEnd(40)
-        );
-        console.log(
-          '---------- ',
-          '----------- ',
-          '------------- ',
-          '---------------------------------------------------'
-        );
         sbanken.transactions({ accountId, from, to }).then(json => {
+          if (program.verbose) {
+            log.info('Available items:', json.availableItems);
+          }
+          console.log(
+            'name:',
+            chalk.white.bold(name),
+            ' account number:',
+            chalk.white.bold(accountNumber),
+            ' balance:',
+            chalk.white.bold(balance)
+          );
+          console.log(
+            'Date'.padEnd(11),
+            'Amount'.padStart(11),
+            ' Type'.padEnd(21),
+            'Description'.padEnd(40)
+          );
+          console.log(
+            '---------- ',
+            '----------- ',
+            '------------------- ',
+            '---------------------------------------------------'
+          );
           json.items.forEach(item => {
             let line = item.accountingDate.substr(0, 10) + ' ';
             let amount = parseFloat(item.amount);
@@ -172,7 +178,7 @@ program
             line += chalk.bold.yellow(
               item.transactionTypeCode.toString().padStart(4)
             );
-            line += ' ' + item.transactionTypeText.padEnd(9) + '  ';
+            line += ' ' + item.transactionType.padEnd(15) + '  ';
             line += item.text;
 
             console.log(line);
