@@ -8,7 +8,7 @@ const chalk = require('chalk');
 const { name, description, version } = package;
 
 setupCredentials();
-sbanken = new Sbanken(credentials);
+const sbanken = new Sbanken(credentials);
 
 program.version(version).description(description);
 program.option('-v, --verbose', 'Tell the program to be verbose');
@@ -28,7 +28,7 @@ program
 program
   .command('account [name]')
   .alias('ac')
-  .description('List accounts with a given name')
+  .description('List accounts matching the provided name.')
   .action(name => {
     if (program.verbose) {
       log.info('Told to list account by name: ' + name);
@@ -46,7 +46,9 @@ program
   .command('customers')
   .alias('cu')
   .option('-a --api_version [version]', 'Version of API to use, v1 or v2')
-  .description('Fetch the customers associated with the current userId.')
+  .description(
+    'Print out information about the customer associated with the current userId.'
+  )
   .action(() => {
     let api = program.api_version || 'v1';
     if (program.verbose) {
@@ -89,7 +91,9 @@ program
 program
   .command('transactions <name>')
   .alias('tr')
-  .description('Fetch the transactions for the account with name.')
+  .description(
+    'Print out transactions for the account matching the provided name.'
+  )
   .usage('[options] <name>')
   .option('-f --from <yyyy-mm-dd>', 'From date')
   .option('-t --to <yyyy-mm-dd>', 'To date')
