@@ -1,11 +1,17 @@
 {
   "name": "sbanken-cli",
-  "version": "0.2.1",
-  "description": "A command line interface to do banking with sbanken.",
+  "version": "0.4.4",
+  "description": "A module wrapping the Sbanken APIs, and a command line tool to do banking with sbanken.",
+  "keywords": [
+    "api",
+    "open banking",
+    "cli",
+    "sbanken"
+  ],
   "main": "./src/node-sbanken.js",
+  "module": "./src/node-sbanken.js",
   "author": "Thomas Malt <thomas@malt.no>",
   "license": "MIT",
-  "private": false,
   "bin": {
     "sbanken": "./src/index.js"
   },
