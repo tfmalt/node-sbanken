@@ -1,6 +1,6 @@
 {
   "name": "node-sbanken",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "A module wrapping the Sbanken REST APIs, and a command line tool to do banking from the terminal.",
   "keywords": [
     "api",
@@ -14,7 +14,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tfmalt/node-sbanken.git" 
+    "url": "https://github.com/tfmalt/node-sbanken.git"
   },
   "homepage": "https://github.com/tfmalt/node-sbanken.git",
   "bin": {

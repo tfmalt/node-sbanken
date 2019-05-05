@@ -256,7 +256,10 @@ class Sbanken {
         if (res.ok) {
           return res.json();
         } else {
-          throw new Error(`${res.status} ${res.statusText}`);
+          return res.json().then(json => {
+            log.error(json);
+            throw new Error(`${res.status} ${res.statusText}`);
+          });
         }
       })
       .then(json => {
