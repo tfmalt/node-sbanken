@@ -1,7 +1,7 @@
 {
-  "name": "sbanken-cli",
+  "name": "node-sbanken",
   "version": "0.5.4",
-  "description": "A module wrapping the Sbanken APIs, and a command line tool to do banking with sbanken.",
+  "description": "A module wrapping the Sbanken REST APIs, and a command line tool to do banking from the terminal.",
   "keywords": [
     "api",
     "open banking",
@@ -12,6 +12,11 @@
   "module": "./src/node-sbanken.js",
   "author": "Thomas Malt <thomas@malt.no>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tfmalt/node-sbanken.git" 
+  },
+  "homepage": "https://github.com/tfmalt/node-sbanken.git",
   "bin": {
     "sbanken": "./src/index.js"
   },
