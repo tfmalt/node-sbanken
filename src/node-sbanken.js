@@ -21,6 +21,7 @@ class Sbanken {
     if (!this.__testCredentials(credentials)) {
       throw new Error('Credentials must be provided.');
     }
+
     this.credentials = credentials;
     this.opts = options;
 
@@ -54,102 +55,96 @@ class Sbanken {
    *
    * @param {string} version
    */
-  customers(version = 'v1') {
-    return this.getAccessToken().then(data => {
-      if (this.opts.verbose) {
-        log.info('Fetching:', this.urls.customers[version]);
-      }
+  async customers(version = 'v1') {
+    const data = await this.getAccessToken();
+    if (this.opts.verbose) {
+      log.info('Fetching:', this.urls.customers[version]);
+    }
 
-      return fetch(this.urls.customers[version], {
-        headers: {
-          Authorization: `Bearer ${data.access_token}`,
-          Accept: 'application/json',
-          customerId: this.credentials.userId,
-        },
-      }).then(res => {
-        if (this.opts.verbose) {
-          log.info('Got response from server:', res.status, res.statusText);
-        }
-
-        if (res.ok) {
-          return res.json();
-        } else {
-          throw new Error(res.status + ' ' + res.statusText);
-        }
-      });
+    const res = await fetch(this.urls.customers[version], {
+      headers: {
+        Authorization: `Bearer ${data.access_token}`,
+        Accept: 'application/json',
+        customerId: this.credentials.userId,
+      },
     });
+
+    if (this.opts.verbose) {
+      log.info(`Got response from server: ${res.status} ${res.statusText}`);
+    }
+
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(res.status + ' ' + res.statusText + JSON.stringify(json));
+    }
+
+    return json;
   }
 
-  accounts() {
-    return this.getAccessToken()
-      .then(data => {
-        if (this.opts.verbose) {
-          log.info('Fetching accounts:', this.urls.accounts.v1);
-        }
-        return fetch(this.urls.accounts.v1, {
-          headers: {
-            Authorization: `Bearer ${data.access_token}`,
-            Accept: 'application/json',
-            customerId: this.credentials.userId,
-          },
-        });
-      })
-      .then(res => {
-        if (res.ok) {
-          if (this.opts.verbose) {
-            log.info('  Status code:', res.status, res.statusText);
-          }
+  /**
+   * Fetch list of accounts from server
+   */
+  async accounts() {
+    const token = await this.getAccessToken();
+    if (this.opts.verbose) {
+      log.info('Fetching accounts:', this.urls.accounts.v1);
+    }
 
-          return res.json();
-        } else {
-          if (this.opts.verbose) {
-            log.error('  Status code:', res.status, res.statusText);
-          }
+    const res = await fetch(this.urls.accounts.v1, {
+      headers: {
+        Authorization: `Bearer ${token.access_token}`,
+        Accept: 'application/json',
+        customerId: this.credentials.userId,
+      },
+    });
 
-          throw new Error(res.status + ' ' + res.statusText);
-        }
-      })
-      .catch(err => {
-        log.error(err.message);
-        process.exit(1);
-      });
+    if (this.opts.verbose) {
+      log.info('  Status code:', res.status, res.statusText);
+    }
+
+    if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
+
+    return res.json();
   }
 
-  transfer(options) {
-    return this.getAccessToken().then(data => {
-      const msg = `From ${options.from.name} to ${options.to.name}`.slice(
-        0,
-        30
-      );
-      const body = {
-        fromAccountId: options.from.accountId,
-        toAccountId: options.to.accountId,
-        message: msg,
-        amount: parseFloat(options.amount),
-      };
+  /**
+   * Transfer money between accounts
+   *
+   * @param {Object} options
+   * @param {float} options.value
+   * @param {Object} options.from
+   * @param {Object} options.to
+   */
+  async transfer(options) {
+    const token = await this.getAccessToken();
+    const msg = `From ${options.from.name} to ${options.to.name}`.slice(0, 30);
 
-      if (this.opts.verbose) log.info('Fetching:', this.urls.transfer.v1);
-      if (this.opts.verbose) log.debug('body:', JSON.stringify(body));
-      return fetch(this.urls.transfer.v1, {
-        method: 'post',
-        body: JSON.stringify(body),
-        headers: {
-          Authorization: `Bearer ${data.access_token}`,
-          Accept: 'application/json',
-          customerId: this.credentials.userId,
-          'Content-Type': 'application/json',
-        },
-      }).then(res => {
-        if (res.ok) return res;
-        if (res.status === 400) return res;
+    const body = {
+      fromAccountId: options.from.accountId,
+      toAccountId: options.to.accountId,
+      message: msg,
+      amount: parseFloat(options.amount),
+    };
 
-        console.error(res.status, res.statusText);
-        return res.json().then(data => {
-          console.error(data);
-          process.exit(1);
-        });
-      });
+    if (this.opts.verbose) log.info('Fetching:', this.urls.transfer.v1);
+    if (this.opts.verbose) log.debug('body:', JSON.stringify(body));
+
+    const res = await fetch(this.urls.transfer.v1, {
+      method: 'post',
+      body: JSON.stringify(body),
+      headers: {
+        Authorization: `Bearer ${token.access_token}`,
+        Accept: 'application/json',
+        customerId: this.credentials.userId,
+        'Content-Type': 'application/json',
+      },
     });
+
+    if (res.ok) return res;
+    if (res.status === 400) return res;
+
+    const json = await res.json();
+    throw new Error(`${res.status} ${res.statusText} ${JSON.stringify(json)}`);
   }
 
   transactions(options) {
