@@ -42,6 +42,7 @@ program
   .usage('[options] <name>')
   .option('-f --from <yyyy-mm-dd>', 'From date')
   .option('-t --to <yyyy-mm-dd>', 'To date')
+  .option('-l --limit <number>', 'Number of transactions to fetch.')
   .action(handleTransactions);
 
 program
@@ -148,12 +149,15 @@ async function handleTransactions(aName, options) {
 
   if (program.verbose) {
     log.info('Fetching transactions for account:', account.name);
-    log.info('  from:'.padStart(8), from);
-    log.info('  to:'.padStart(8), to);
   }
 
   const { accountId, name, accountNumber, balance } = account;
-  const transactions = await sbanken.transactions({ accountId, from, to });
+  const transactions = await sbanken.transactions({
+    accountId,
+    from,
+    to,
+    limit: options.limit,
+  });
 
   if (program.verbose) {
     log.info('Available items:', transactions.availableItems);
