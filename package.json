@@ -21,7 +21,8 @@
     "sbanken": "./src/cli.js"
   },
   "scripts": {
-    "sbanken": "node ./src/cli.js"
+    "sbanken": "node ./src/cli.js",
+    "test": "true"
   },
   "devDependencies": {
     "prettier": "1.17.0"
