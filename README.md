@@ -39,10 +39,17 @@ const credentials = {
 
 const sbanken = new Sbanken(credentials);
 
+// Promise syntax
 sbanken.accounts().then(data => {
   // Do something with the account data
   console.table(data.items);
 });
+
+// async/await syntax
+(async () => {
+  const data = await sbanken.accounts();
+  console.table(data.items);
+})();
 ```
 
 ## Command line tool
