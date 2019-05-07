@@ -147,45 +147,52 @@ class Sbanken {
     throw new Error(`${res.status} ${res.statusText} ${JSON.stringify(json)}`);
   }
 
-  transactions(options) {
-    return this.getAccessToken().then(data => {
-      let url = `${this.urls.transactions.v1}/${options.accountId}`;
+  /**
+   * Fetches all transactions for an account for the defined interval, or
+   * the last 30 days.
+   * @param {Object} options
+   * @param {string} options.accountId
+   * @param {string} options.from
+   * @param {string} options.to
+   * @param {integer} options.limit
+   */
+  async transactions(options) {
+    const token = await this.getAccessToken();
+    const { accountId, from, to, limit } = options;
 
-      const length = options.length || 1000;
-      url += `?length=${length}`;
-      if (options.from instanceof Date) {
-        url += `&startDate=${options.from.toISOString().slice(0, 10)}`;
-      }
-      if (options.to instanceof Date) {
-        url += `&endDate=${options.to.toISOString().slice(0, 10)}`;
-      }
+    if (this.opts.verbose) {
+      log.debug('Fetching transactions. Options:', JSON.stringify(options));
+    }
+    let url = `${this.urls.transactions.v1}/${accountId}`;
 
-      if (this.opts.verbose) {
-        log.info('Fetching transactions:', url);
-      }
+    url += `?length=${limit || 1000}`;
+    if (from instanceof Date) {
+      url += `&startDate=${from.toISOString().slice(0, 10)}`;
+    }
+    if (to instanceof Date) {
+      url += `&endDate=${to.toISOString().slice(0, 10)}`;
+    }
 
-      return fetch(url, {
-        headers: {
-          Authorization: `Bearer ${data.access_token}`,
-          Accept: 'application/json',
-          customerId: this.credentials.userId,
-        },
-      })
-        .then(res => {
-          if (res.ok) return res.json();
+    if (this.opts.verbose) {
+      log.info('Fetching transactions:', url);
+    }
 
-          console.debug(res.status, res.statusText);
-          return res
-            .json()
-            .then(data => console.debug(data.errorType, ':', data.errorMessage))
-            .then(() => process.exit(1));
-        })
-        .catch(error => {
-          log.error('Got error:');
-          log.error(error.message);
-          process.exit(1);
-        });
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token.access_token}`,
+        Accept: 'application/json',
+        customerId: this.credentials.userId,
+      },
     });
+
+    const json = await res.json();
+    if (res.ok) return json;
+
+    console.debug(res.status, res.statusText);
+    console.debug(json.errorType, ':', json.errorMessage);
+    throw new Error(
+      `${res.status} ${res.statusText} - ${json.errorType} ${json.errorMessage}`
+    );
   }
 
   /**
@@ -226,6 +233,9 @@ class Sbanken {
       });
   }
 
+  /**
+   * Get a new access token from the sbanken service
+   */
   refreshAccessToken() {
     if (this.opts.verbose) {
       log.info('Fetching new access token.');
