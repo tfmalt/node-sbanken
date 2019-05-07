@@ -1,5 +1,7 @@
 # SBanken API Wrapper (SDK) and command line tool
 
+[![Build Status](https://travis-ci.org/tfmalt/node-sbanken.svg?branch=master)](https://travis-ci.org/tfmalt/node-sbanken)
+
 ## API Wrapper (SDK)
 
 This is a simple object oriented wrapper for the Sbanken banking REST API's. It removes the hassle of implementing the rest calls directly. It provides a fairly straight forward promise based library. All functions will return a promise that can be processed further.
