@@ -1,0 +1,16 @@
+{
+  "auth": "https://auth.sbanken.no/identityserver/connect/token",
+  "accounts": {
+    "v1": "https://api.sbanken.no/exec.bank/api/v1/accounts"
+  },
+  "transactions": {
+    "v1": "https://api.sbanken.no/exec.bank/api/v1/transactions"
+  },
+  "transfer": {
+    "v1": "https://api.sbanken.no/exec.bank/api/v1/Transfers"
+  },
+  "customers": {
+    "v1": "https://api.sbanken.no/exec.customers/api/v1/customers",
+    "v2": "https://api.sbanken.no/exec.customers/api/v2/customers"
+  }
+}

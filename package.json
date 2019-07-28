@@ -1,6 +1,6 @@
 {
   "name": "node-sbanken",
-  "version": "0.5.9",
+  "version": "0.6.1",
   "description": "A module wrapping the Sbanken REST APIs, and a command line tool to do banking from the terminal.",
   "keywords": [
     "api",
@@ -22,6 +22,7 @@
   },
   "scripts": {
     "sbanken": "node ./src/cli.js",
+    "debug_account": "node --nolazy --inspect-brk=9229 ./src/cli.js ac felles",
     "test": "true"
   },
   "devDependencies": {

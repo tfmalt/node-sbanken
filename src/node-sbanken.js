@@ -4,6 +4,7 @@ const fetch = require('node-fetch');
 const { URLSearchParams } = require('url');
 const fs = require('fs');
 const fsp = fs.promises;
+const urls = require('./sbanken-urls');
 
 class Sbanken {
   /**
@@ -26,19 +27,12 @@ class Sbanken {
     this.opts = options;
 
     this.clientCredentials = btoa(
-      credentials.clientId + ':' + credentials.secret
+      encodeURIComponent(credentials.clientId) +
+        ':' +
+        encodeURIComponent(credentials.secret)
     );
 
-    this.urls = {
-      auth: 'https://auth.sbanken.no/IdentityServer/connect/token',
-      accounts: { v1: 'https://api.sbanken.no/bank/api/v1/accounts' },
-      transactions: { v1: 'https://api.sbanken.no/bank/api/v1/transactions' },
-      customers: {
-        v1: 'https://api.sbanken.no/customers/api/v1/customers',
-        v2: 'https://api.sbanken.no/customers/api/v2/customers',
-      },
-      transfer: { v1: 'https://api.sbanken.no/bank/api/v1/Transfers' },
-    };
+    this.urls = urls;
 
     this.cache = {
       dir: `${__dirname}/.cache`,
@@ -256,6 +250,7 @@ class Sbanken {
       .then(res => {
         if (this.opts.verbose) {
           log.info('Got response from server:', res.status, res.statusText);
+          log.debug('here');
         }
 
         if (res.ok) {
