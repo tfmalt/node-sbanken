@@ -5,6 +5,7 @@ const { URLSearchParams } = require('url');
 const fs = require('fs');
 const fsp = fs.promises;
 const urls = require('./sbanken-urls');
+const { version, author, description } = require('../package');
 
 class Sbanken {
   /**
@@ -33,6 +34,9 @@ class Sbanken {
     );
 
     this.urls = urls;
+    this.version = version;
+    this.author = author;
+    this.description = description;
 
     this.cache = {
       dir: `${__dirname}/.cache`,

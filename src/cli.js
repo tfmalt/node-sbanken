@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-const package = require('../package');
+// const package = require('../package');
 const credentials = require('../etc/sbanken');
 const Sbanken = require('./node-sbanken');
 const log = require('./log');
 const program = require('commander');
 const chalk = require('chalk');
-const { name, description, version } = package;
+// const { name, description, version } = package;
 
 setupCredentials();
 const sbanken = new Sbanken(credentials);
 
-program.version(version).description(description);
+program.version(sbanken.version).description(sbanken.description);
 program.option('-v, --verbose', 'Tell the program to be verbose');
 
 program
