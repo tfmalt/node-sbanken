@@ -1,11 +1,9 @@
 #!/usr/bin/env node
-// const package = require('../package');
 const credentials = require('../etc/sbanken');
 const Sbanken = require('./node-sbanken');
 const log = require('./log');
 const program = require('commander');
 const chalk = require('chalk');
-// const { name, description, version } = package;
 
 setupCredentials();
 const sbanken = new Sbanken(credentials);
@@ -50,14 +48,15 @@ program
   .description('Transfer money between two accounts.')
   .option('-f --from <name|account>')
   .option('-t --to <name|account>')
+  .option('-m --message <message>')
   .action(handleTransfer);
 
-program.on('option:verbose', function() {
+program.on('option:verbose', function () {
   process.env.VERBOSE = this.verbose;
   sbanken.options({ verbose: this.verbose });
 });
 
-program.on('command:*', function() {
+program.on('command:*', function () {
   console.error(
     'Invalid command: %s\nSee --help for a list of available commands.',
     program.args.join(' ')
@@ -93,10 +92,18 @@ async function handleAccount(name) {
   const json = await sbanken.accounts();
 
   json.items
-    .filter(item => item.name.match(regex))
+    .filter((item) => item.name.match(regex))
     .sort((a, b) => a.name.localeCompare(b.name))
-    .forEach(item => printAccountInfoRow(item));
+    .forEach((item) => printAccountInfoRow(item));
 }
+
+/**
+ * Transfer money between accounts.
+ * The message is automatically truncated to 30 characters.
+ *
+ * @param {Number} amount
+ * @param {Object} options
+ */
 async function handleTransfer(amount, options) {
   if (program.verbose) {
     log.info('Running command transfer', options.from, options.to, amount);
@@ -105,6 +112,7 @@ async function handleTransfer(amount, options) {
   const accounts = await sbanken.accounts();
   const from = findAccountOrExit(accounts, options.from);
   const to = findAccountOrExit(accounts, options.to);
+  const message = options.message ? options.message.slice(0, 30) : null;
 
   console.log(
     'Transferring',
@@ -112,25 +120,24 @@ async function handleTransfer(amount, options) {
     chalk`from {red.bold ${from.name}} ({yellow ${from.accountNumber}})`,
     chalk`to {green.bold ${to.name}} ({yellow ${to.accountNumber}})`
   );
+  console.log(chalk`Message: {magenta.bold ${message}}.`);
 
-  const res = await sbanken.transfer({ from, to, amount });
+  const res = await sbanken.transfer({ from, to, amount, message });
 
   if (!res.ok) return handleRequestError(res);
 
   console.log(
-    chalk`{blue ${res.status}} {white.bold ${
-      res.statusText
-    }} - Transfer successful`
+    chalk`{blue ${res.status}} {white.bold ${res.statusText}} - Transfer successful`
   );
 
   const updatedAccounts = await sbanken.accounts();
   updatedAccounts.items
-    .filter(i => {
+    .filter((i) => {
       if (i.accountId === from.accountId || i.accountId === to.accountId) {
         return true;
       }
     })
-    .forEach(i => printAccountInfoRow(i));
+    .forEach((i) => printAccountInfoRow(i));
 }
 
 async function handleTransactions(aName, options) {
@@ -181,7 +188,7 @@ async function handleTransactions(aName, options) {
     '---------------------------------------------------'
   );
 
-  transactions.items.forEach(item => {
+  transactions.items.forEach((item) => {
     let line = item.accountingDate.substr(0, 10) + ' ';
     let amount = parseFloat(item.amount);
 
@@ -217,7 +224,7 @@ async function handleCustomers() {
   console.log('email:'.padEnd(pad), chalk.white.bold(json.item.emailAddress));
 
   let phones = '';
-  json.item.phoneNumbers.forEach(n => {
+  json.item.phoneNumbers.forEach((n) => {
     phones += `+${n.countryCode} ${n.number}, `;
   });
 
@@ -225,11 +232,7 @@ async function handleCustomers() {
   console.log(
     'address:'.padEnd(pad),
     chalk.white.bold(
-      `${json.item.postalAddress.addressLine1}, ${
-        json.item.postalAddress.addressLine2
-      }, ${json.item.postalAddress.addressLine3}, ${
-        json.item.postalAddress.addressLine4
-      }`
+      `${json.item.postalAddress.addressLine1}, ${json.item.postalAddress.addressLine2}, ${json.item.postalAddress.addressLine3}, ${json.item.postalAddress.addressLine4}`
     )
   );
 }
@@ -237,16 +240,16 @@ async function handleCustomers() {
 async function handleRequestError(res) {
   const json = await res.json();
   console.log(
-    chalk`{red ${res.status}} {white.bold ${res.statusText}} - ${
-      json.errorMessage
-    }`
+    chalk`{red ${res.status}} {white.bold ${res.statusText}} - ${json.errorMessage}`
   );
 
   process.exit(1);
 }
 
 function findAccountOrExit(accounts, name) {
-  const list = accounts.items.filter(i => i.name.match(new RegExp(name, 'ui')));
+  const list = accounts.items.filter((i) =>
+    i.name.match(new RegExp(name, 'ui'))
+  );
 
   if (list.length === 0) {
     console.error(

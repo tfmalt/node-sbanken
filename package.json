@@ -1,6 +1,6 @@
 {
   "name": "node-sbanken",
-  "version": "0.6.2",
+  "version": "1.0.3",
   "description": "A module wrapping the Sbanken REST APIs, and a command line tool to do banking from the terminal.",
   "keywords": [
     "api",
@@ -26,12 +26,12 @@
     "test": "true"
   },
   "devDependencies": {
-    "prettier": "1.17.0"
+    "prettier": "2.0.4"
   },
   "dependencies": {
     "btoa": "^1.2.1",
-    "chalk": "^2.4.2",
-    "commander": "^2.20.0",
+    "chalk": "^4.0.0",
+    "commander": "^5.0.0",
     "node-fetch": "^2.5.0"
   }
 }

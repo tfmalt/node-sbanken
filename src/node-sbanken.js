@@ -112,10 +112,14 @@ class Sbanken {
    * @param {float} options.value
    * @param {Object} options.from
    * @param {Object} options.to
+   * @param {Object} options.message
    */
   async transfer(options) {
     const token = await this.getAccessToken();
-    const msg = `From ${options.from.name} to ${options.to.name}`.slice(0, 30);
+
+    const msg =
+      options.message ||
+      `From ${options.from.name} to ${options.to.name}`.slice(0, 30);
 
     const body = {
       fromAccountId: options.from.accountId,
@@ -213,8 +217,8 @@ class Sbanken {
         }
         return fsp.readFile(this.cache.file);
       })
-      .then(data => JSON.parse(data))
-      .then(data => {
+      .then((data) => JSON.parse(data))
+      .then((data) => {
         if (this.__isAccessTokenFresh(data)) {
           return data;
         } else {
@@ -225,7 +229,7 @@ class Sbanken {
           return this.refreshAccessToken();
         }
       })
-      .catch(err => {
+      .catch((err) => {
         log.error(err.message);
         process.exit(1);
       });
@@ -251,7 +255,7 @@ class Sbanken {
         customerId: this.credentials.userId,
       },
     })
-      .then(res => {
+      .then((res) => {
         if (this.opts.verbose) {
           log.info('Got response from server:', res.status, res.statusText);
           log.debug('here');
@@ -260,20 +264,20 @@ class Sbanken {
         if (res.ok) {
           return res.json();
         } else {
-          return res.json().then(json => {
+          return res.json().then((json) => {
             log.error(json);
             throw new Error(`${res.status} ${res.statusText}`);
           });
         }
       })
-      .then(json => {
+      .then((json) => {
         if (this.opts.verbose) {
           log.info('Adding date to response');
         }
         json.date = new Date();
         return json;
       })
-      .then(json => {
+      .then((json) => {
         if (this.opts.verbose) {
           log.info('Storing access token in cache.');
         }
@@ -295,7 +299,7 @@ class Sbanken {
 
         return json;
       })
-      .catch(err => {
+      .catch((err) => {
         log.error('Received error from Sbanken:', err.message);
         process.exit(1);
       });
