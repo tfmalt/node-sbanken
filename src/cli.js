@@ -115,10 +115,10 @@ async function handleTransfer(amount, options) {
   const message = options.message ? options.message.slice(0, 30) : null;
 
   console.log(
-    'Transferring',
-    chalk.white.bold(`${parseFloat(amount).toFixed(2)} kr`),
-    chalk`from {red.bold ${from.name}} ({yellow ${from.accountNumber}})`,
-    chalk`to {green.bold ${to.name}} ({yellow ${to.accountNumber}})`
+    chalk`Transferring {white.bold ${parseFloat(amount).toFixed(2)} kr}`
+  );
+  console.log(
+    chalk`From: {red.bold ${from.name}} ({yellow ${from.accountNumber}}), To: {green.bold ${to.name}} ({yellow ${to.accountNumber}})`
   );
   console.log(chalk`Message: {magenta.bold ${message}}.`);
 
