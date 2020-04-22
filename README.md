@@ -40,7 +40,7 @@ const credentials = {
 const sbanken = new Sbanken(credentials);
 
 // Promise syntax
-sbanken.accounts().then(data => {
+sbanken.accounts().then((data) => {
   // Do something with the account data
   console.table(data.items);
 });
@@ -59,6 +59,8 @@ The module also contains a fairly complete command line client for doing simple 
 - List your accounts and filter by name (case insensitive regex)
 - List transactions for an account by name
 - Transfer funds between your accounts
+
+!["Screenshot of sbanken cli tool](./doc/sbanken.png){:width="400px"}
 
 ### Usage
 
