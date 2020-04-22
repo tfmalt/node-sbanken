@@ -60,7 +60,7 @@ The module also contains a fairly complete command line client for doing simple 
 - List transactions for an account by name
 - Transfer funds between your accounts
 
-!["Screenshot of sbanken cli tool](./doc/sbanken.png){:width="400px"}
+<img src="./doc/sbanken.png" alt="Screenshot of sbanken cli" style="width: 640px">
 
 ### Usage
 
