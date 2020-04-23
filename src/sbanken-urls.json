@@ -12,5 +12,8 @@
   "customers": {
     "v1": "https://api.sbanken.no/exec.customers/api/v1/customers",
     "v2": "https://api.sbanken.no/exec.customers/api/v2/customers"
+  },
+  "payments": {
+    "v1": "https://api.sbanken.no/exec.bank/api/v1/Payments"
   }
 }

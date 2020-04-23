@@ -44,6 +44,13 @@ program
   .action(handleTransactions);
 
 program
+  .command('payments <name>')
+  .alias('pa')
+  .description('Print payments waiting to be processed.')
+  .usage('<name>')
+  .action(handlePayments);
+
+program
   .command('transfer <amount>')
   .description('Transfer money between two accounts.')
   .option('-f --from <name|account>')
@@ -140,6 +147,45 @@ async function handleTransfer(amount, options) {
     .forEach((i) => printAccountInfoRow(i));
 }
 
+async function handlePayments(aName) {
+  if (program.verbose) {
+    log.info('Running command payments');
+  }
+
+  const json = await sbanken.accounts();
+  const account = findAccountOrExit(json, aName);
+  if (program.verbose) {
+    console.log('account:', account);
+  }
+
+  const payments = await sbanken.payments(account.accountId);
+
+  console.log(
+    chalk`name: {yellow ${account.name}}  account number: {yellow ${
+      account.accountNumber
+    }}  balance: {white.bold ${account.available.toFixed(2)}}`
+  );
+  console.log();
+  payments.items
+    .sort((a, b) => (new Date(a.dueDate) > new Date(b.dueDate) ? 1 : -1))
+    .forEach((item) => {
+      console.log(
+        item.dueDate.slice(0, 10).padEnd(11),
+        chalk`{red.bold ${item.amount.toFixed(2).padStart(11)}}`,
+        chalk`{cyan ${item.productType.padStart(11).padEnd(12)}}`,
+        chalk`${item.beneficiaryName.padEnd(52)}`
+      );
+    });
+  // console.log(payments);
+  console.log();
+}
+
+/**
+ * List Transatcions for an account
+ * @param {string} aName
+ * @param {Object} options
+ *
+ */
 async function handleTransactions(aName, options) {
   if (program.verbose) {
     log.info(chalk`Running command transactions for name {yellow ${aName}}`);

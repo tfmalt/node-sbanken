@@ -149,6 +149,30 @@ class Sbanken {
     throw new Error(`${res.status} ${res.statusText} ${JSON.stringify(json)}`);
   }
 
+  async payments(accountId) {
+    const token = await this.getAccessToken();
+    const url = `${this.urls.payments.v1}/${accountId}`;
+
+    if (this.opts.verbose) {
+      console.log('Fetching Payments:', { accountId, url });
+    }
+
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token.access_token}`,
+        Accept: 'application/json',
+        customerId: this.credentials.userId,
+      },
+    }).catch((e) => {
+      console.log('got exception error:', e);
+      process.exit();
+    });
+
+    if (res.ok) return res.json();
+    console.log('Status:', res.status, 'msg:', res.statusText);
+    throw new Error(`${res.status} ${res.statusText}`);
+  }
+
   /**
    * Fetches all transactions for an account for the defined interval, or
    * the last 30 days.
