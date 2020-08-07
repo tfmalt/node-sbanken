@@ -4,6 +4,8 @@ export interface AccessTokenInfo {
   expires_in: number;
   access_token: string;
   date: string;
+  token_type: string;
+  scope: string;
 }
 
 export interface Credentials {
@@ -41,8 +43,8 @@ export interface CacheInfo {
 
 export interface TransferOptions {
   message?: string;
-  from: AccountInfo;
-  to: AccountInfo;
+  from: Account;
+  to: Account;
   amount: string;
 }
 
@@ -65,22 +67,33 @@ export interface TransactionList {
   items: any;
 }
 
-export interface AccessTokenInfo {
-  expires_in: number;
-  access_token: string;
-  date: string;
+export type ErrorType =
+  | 'System'
+  | 'Input'
+  | 'State'
+  | 'ServiceUnavailable'
+  | 'CustomHttpStatus'
+  | 'NotFound';
+
+export interface AccountListResult {
+  availableItems: number;
+  items: Account[];
+  errorType: ErrorType | null;
+  isError: boolean;
+  errorCode: number | null;
+  errorMessage: string | null;
+  traceId: string | null;
 }
 
-export interface AccountList {
-  items: AccountInfo[];
-}
-
-export interface AccountInfo {
-  name: string;
+export interface Account {
   accountId: string;
-  accountNumber: number;
+  accountNumber: string;
+  ownerCustomerId: string;
+  name: string;
+  accountType: string;
   available: number;
   balance: number;
+  creditLimit: number;
 }
 
 export interface PaymentInfo {

@@ -5,6 +5,7 @@ import * as fetch from 'node-fetch';
 import log from './log';
 import program from 'commander';
 import chalk from 'chalk';
+import { AccountListResult } from './node-sbanken.types';
 
 interface HandleTransferOptions {
   from: string;
@@ -102,7 +103,7 @@ async function handleAccounts() {
   if (program.verbose) {
     log.info('Command: List all accounts.');
   }
-  const json: sbanken.AccountList = await sb.accounts();
+  const json: sbanken.AccountListResult = await sb.accounts();
   console.table(json.items);
 }
 
@@ -110,11 +111,14 @@ async function handleAccount(name: string) {
   if (program.verbose) {
     log.info('Told to list account by name: ' + name);
   }
-  const regex = new RegExp(name, 'ui');
-  const json = await sb.accounts();
+
+  const regex: RegExp = new RegExp(name, 'ui');
+  const json: sbanken.AccountListResult = await sb.accounts();
 
   json.items
-    .filter((item) => item.name.match(regex))
+    .filter((item: sbanken.Account) =>
+      item.name === 'string' ? item.name.match(regex) : false
+    )
     .sort((a, b) => a.name.localeCompare(b.name))
     .forEach((item) => printAccountInfoRow(item));
 }
@@ -131,9 +135,9 @@ async function handleTransfer(amount: string, options: HandleTransferOptions) {
     log.info('Running command transfer', options.from, options.to, amount);
   }
 
-  const accounts: sbanken.AccountList = await sb.accounts();
-  const from: sbanken.AccountInfo = findAccountOrExit(accounts, options.from);
-  const to: sbanken.AccountInfo = findAccountOrExit(accounts, options.to);
+  const accounts: sbanken.AccountListResult = await sb.accounts();
+  const from: sbanken.Account = findAccountOrExit(accounts, options.from);
+  const to: sbanken.Account = findAccountOrExit(accounts, options.to);
   const message = options.message ? options.message.slice(0, 30) : undefined;
 
   console.log(
@@ -152,9 +156,9 @@ async function handleTransfer(amount: string, options: HandleTransferOptions) {
     chalk`{blue ${res.status}} {white.bold ${res.statusText}} - Transfer successful`
   );
 
-  const updatedAccounts = await sb.accounts();
+  const updatedAccounts: sbanken.AccountListResult = await sb.accounts();
   updatedAccounts.items
-    .filter((i) => {
+    .filter((i: sbanken.Account) => {
       if (i.accountId === from.accountId || i.accountId === to.accountId) {
         return true;
       }
@@ -167,8 +171,8 @@ async function handlePayments(aName: string) {
     log.info('Running command payments');
   }
 
-  const json: sbanken.AccountList = await sb.accounts();
-  const account: sbanken.AccountInfo = findAccountOrExit(json, aName);
+  const json: sbanken.AccountListResult = await sb.accounts();
+  const account: sbanken.Account = findAccountOrExit(json, aName);
 
   if (program.verbose) {
     console.log('account:', account);
@@ -321,7 +325,7 @@ async function handleRequestError(res: fetch.Response) {
  * @param name
  * @returns {sbanken.AccountInfo}
  */
-function findAccountOrExit(accounts: sbanken.AccountList, name: string) {
+function findAccountOrExit(accounts: sbanken.AccountListResult, name: string) {
   const list = accounts.items.filter((i) =>
     i.name.match(new RegExp(name, 'ui'))
   );
@@ -342,7 +346,7 @@ function findAccountOrExit(accounts: sbanken.AccountList, name: string) {
   return list[0];
 }
 
-function printAccountInfoRow(account: sbanken.AccountInfo) {
+function printAccountInfoRow(account: sbanken.Account) {
   console.log(
     account.name.padEnd(32),
     chalk.white.bold(`${account.available.toFixed(2)} kr`.padStart(15)),

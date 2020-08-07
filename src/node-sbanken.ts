@@ -14,7 +14,7 @@ import {
   Urls,
   CacheInfo,
   CustomerItemResult,
-  AccountList,
+  AccountListResult,
   TransactionsOptions,
   TransferOptions,
   AccessTokenInfo,
@@ -22,6 +22,10 @@ import {
 } from './node-sbanken.types';
 
 export * from './node-sbanken.types';
+
+/**
+ * A SDK Wrapper for the sbanken APIs
+ */
 export class Sbanken {
   credentials: Credentials;
   opts: Options;
@@ -115,15 +119,28 @@ export class Sbanken {
   }
 
   /**
-   * Fetch list of accounts from server
+   * Fetch the list of accounts for user from server
+   *
+   * @returns {Promise<AccountListResult>}
    */
-  async accounts(): Promise<AccountList> {
-    const token = await this.getAccessToken();
+  async accounts(): Promise<AccountListResult> {
     if (this.opts.verbose) {
       log.info('Fetching accounts:', this.urls.accounts.v1);
     }
 
-    const res = await fetch.default(this.urls.accounts.v1, {
+    const res = await this.__doRequest(this.urls.accounts.v1);
+
+    if (this.opts.verbose) {
+      log.info('  Status code:', res.status, res.statusText);
+    }
+
+    return res.json();
+  }
+
+  async __doRequest(url: string, body?: object): Promise<fetch.Response> {
+    const token: AccessTokenInfo = await this.getAccessToken();
+
+    const res: fetch.Response = await fetch.default(url, {
       headers: {
         Authorization: `Bearer ${token.access_token}`,
         Accept: 'application/json',
@@ -131,18 +148,16 @@ export class Sbanken {
       },
     });
 
-    if (this.opts.verbose) {
-      log.info('  Status code:', res.status, res.statusText);
-    }
-
     if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
 
-    return res.json();
+    return res;
   }
 
   /**
    * Transfer money between accounts
    *
+   * @param {TransferOptions} options
+   * @returns {Promise<fetch.Response>}
    */
   async transfer(options: TransferOptions): Promise<fetch.Response> {
     const token: AccessTokenInfo = await this.getAccessToken();
@@ -255,12 +270,16 @@ export class Sbanken {
   }
 
   /**
-   * @returns Promise
+   * Fetches a valid accessToken.
+   * If an existing valid access token exists that is returned
+   *
+   * @returns {Promise<AccessTokenInfo>}
    */
-  async getAccessToken() {
+  async getAccessToken(): Promise<AccessTokenInfo> {
     if (this.opts.verbose) {
       log.info('Fetching access token');
     }
+
     if (!fs.existsSync(this.cache.file)) {
       return this.refreshAccessToken();
     }
@@ -295,7 +314,7 @@ export class Sbanken {
   /**
    * Get a new access token from the sbanken service
    */
-  async refreshAccessToken() {
+  async refreshAccessToken(): Promise<AccessTokenInfo> {
     if (this.opts.verbose) {
       log.info('Fetching new access token.');
     }
@@ -303,8 +322,8 @@ export class Sbanken {
     const params = new URLSearchParams();
     params.append('grant_type', 'client_credentials');
 
-    return fetch
-      .default(this.urls.auth, {
+    try {
+      const res: fetch.Response = await fetch.default(this.urls.auth, {
         method: 'post',
         body: params,
         headers: {
@@ -312,60 +331,54 @@ export class Sbanken {
           Authorization: `Basic ${this.clientCredentials}`,
           customerId: this.credentials.userId,
         },
-      })
-      .then((res) => {
-        if (this.opts.verbose) {
-          log.info('Got response from server:', res.status, res.statusText);
-          log.debug('here');
-        }
-
-        if (res.ok) {
-          return res.json();
-        } else {
-          return res.json().then((json) => {
-            log.error(json);
-            throw new Error(`${res.status} ${res.statusText}`);
-          });
-        }
-      })
-      .then((json) => {
-        if (this.opts.verbose) {
-          log.info('Adding date to response');
-        }
-        json.date = new Date();
-        return json;
-      })
-      .then((json) => {
-        if (this.opts.verbose) {
-          log.info('Storing access token in cache.');
-        }
-        try {
-          if (!fs.existsSync(`${__dirname}/.cache`)) {
-            fs.mkdirSync(`${__dirname}/.cache`);
-          }
-
-          fs.writeFileSync(
-            `${__dirname}/.cache/accesstoken.json`,
-            JSON.stringify(json),
-            {
-              mode: 0o600,
-            }
-          );
-        } catch (err) {
-          throw err;
-        }
-
-        return json;
-      })
-      .catch((err) => {
-        log.error('Received error from Sbanken:', err.message);
-        process.exit(1);
       });
+
+      const json = await this.__handleAccessTokenResponse(res);
+      return json;
+    } catch (err) {
+      log.error('Received error from Sbanken:', err.message);
+    } finally {
+      process.exit(1);
+    }
+  }
+
+  async __handleAccessTokenResponse(res: fetch.Response) {
+    if (this.opts.verbose) {
+      log.info('Got response from server:', res.status, res.statusText);
+    }
+
+    if (!res.ok) {
+      throw new Error(`${res.status} ${res.statusText}`);
+    }
+
+    const json = await res.json();
+    json.date = new Date().toJSON();
+
+    try {
+      if (this.opts.verbose) {
+        log.info('Storing access token in cache.');
+      }
+      if (!fs.existsSync(`${__dirname}/.cache`)) {
+        fs.mkdirSync(`${__dirname}/.cache`);
+      }
+
+      fs.writeFileSync(
+        `${__dirname}/.cache/accesstoken.json`,
+        JSON.stringify(json),
+        {
+          mode: 0o600,
+        }
+      );
+    } catch (err) {
+      throw err;
+    }
+
+    return json;
   }
 
   __isAccessTokenFresh(data: AccessTokenInfo): boolean {
-    const then = new Date(data.date);
-    const now = new Date();
+    const then: Date = new Date(data.date);
+    const now: Date = new Date();
 
     if (then.getTime() + (data.expires_in - 300) * 1000 > now.getTime()) {
       if (this.opts.verbose) {
