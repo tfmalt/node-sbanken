@@ -1,14 +1,27 @@
 #!/usr/bin/env node
-const credentials = require('../etc/sbanken');
-const Sbanken = require('./node-sbanken');
-const log = require('./log');
-const program = require('commander');
-const chalk = require('chalk');
+import credentials from '../etc/sbanken.json';
+import * as sbanken from './node-sbanken';
+import * as fetch from 'node-fetch';
+import log from './log';
+import program from 'commander';
+import chalk from 'chalk';
+
+interface HandleTransferOptions {
+  from: string;
+  to: string;
+  message?: string;
+}
+
+interface HandleTransactionsOptions {
+  from: string;
+  to: string;
+  limit: number;
+}
 
 setupCredentials();
-const sbanken = new Sbanken(credentials);
+const sb = new sbanken.Sbanken(credentials);
 
-program.version(sbanken.version).description(sbanken.description);
+program.version(sb.version).description(sb.description);
 program.option('-v, --verbose', 'Tell the program to be verbose');
 
 program
@@ -59,8 +72,10 @@ program
   .action(handleTransfer);
 
 program.on('option:verbose', function () {
+  // @ts-ignore
   process.env.VERBOSE = this.verbose;
-  sbanken.options({ verbose: this.verbose });
+  // @ts-ignore
+  sb.options({ verbose: this.verbose });
 });
 
 program.on('command:*', function () {
@@ -87,16 +102,16 @@ async function handleAccounts() {
   if (program.verbose) {
     log.info('Command: List all accounts.');
   }
-  const json = await sbanken.accounts();
+  const json: sbanken.AccountList = await sb.accounts();
   console.table(json.items);
 }
 
-async function handleAccount(name) {
+async function handleAccount(name: string) {
   if (program.verbose) {
     log.info('Told to list account by name: ' + name);
   }
   const regex = new RegExp(name, 'ui');
-  const json = await sbanken.accounts();
+  const json = await sb.accounts();
 
   json.items
     .filter((item) => item.name.match(regex))
@@ -111,15 +126,15 @@ async function handleAccount(name) {
  * @param {Number} amount
  * @param {Object} options
  */
-async function handleTransfer(amount, options) {
+async function handleTransfer(amount: string, options: HandleTransferOptions) {
   if (program.verbose) {
     log.info('Running command transfer', options.from, options.to, amount);
   }
 
-  const accounts = await sbanken.accounts();
-  const from = findAccountOrExit(accounts, options.from);
-  const to = findAccountOrExit(accounts, options.to);
-  const message = options.message ? options.message.slice(0, 30) : null;
+  const accounts: sbanken.AccountList = await sb.accounts();
+  const from: sbanken.AccountInfo = findAccountOrExit(accounts, options.from);
+  const to: sbanken.AccountInfo = findAccountOrExit(accounts, options.to);
+  const message = options.message ? options.message.slice(0, 30) : undefined;
 
   console.log(
     chalk`Transferring {white.bold ${parseFloat(amount).toFixed(2)} kr}`
@@ -129,7 +144,7 @@ async function handleTransfer(amount, options) {
   );
   console.log(chalk`Message: {magenta.bold ${message}}.`);
 
-  const res = await sbanken.transfer({ from, to, amount, message });
+  const res = await sb.transfer({ from, to, amount, message });
 
   if (!res.ok) return handleRequestError(res);
 
@@ -137,7 +152,7 @@ async function handleTransfer(amount, options) {
     chalk`{blue ${res.status}} {white.bold ${res.statusText}} - Transfer successful`
   );
 
-  const updatedAccounts = await sbanken.accounts();
+  const updatedAccounts = await sb.accounts();
   updatedAccounts.items
     .filter((i) => {
       if (i.accountId === from.accountId || i.accountId === to.accountId) {
@@ -147,18 +162,19 @@ async function handleTransfer(amount, options) {
     .forEach((i) => printAccountInfoRow(i));
 }
 
-async function handlePayments(aName) {
+async function handlePayments(aName: string) {
   if (program.verbose) {
     log.info('Running command payments');
   }
 
-  const json = await sbanken.accounts();
-  const account = findAccountOrExit(json, aName);
+  const json: sbanken.AccountList = await sb.accounts();
+  const account: sbanken.AccountInfo = findAccountOrExit(json, aName);
+
   if (program.verbose) {
     console.log('account:', account);
   }
 
-  const payments = await sbanken.payments(account.accountId);
+  const payments: sbanken.PaymentList = await sb.payments(account.accountId);
 
   console.log(
     chalk`name: {yellow ${account.name}}  account number: {yellow ${
@@ -167,7 +183,9 @@ async function handlePayments(aName) {
   );
   console.log();
   payments.items
-    .sort((a, b) => (new Date(a.dueDate) > new Date(b.dueDate) ? 1 : -1))
+    .sort((a: sbanken.PaymentInfo, b: sbanken.PaymentInfo) =>
+      new Date(a.dueDate) > new Date(b.dueDate) ? 1 : -1
+    )
     .forEach((item) => {
       console.log(
         item.dueDate.slice(0, 10).padEnd(11),
@@ -186,12 +204,15 @@ async function handlePayments(aName) {
  * @param {Object} options
  *
  */
-async function handleTransactions(aName, options) {
+async function handleTransactions(
+  aName: string,
+  options: HandleTransactionsOptions
+) {
   if (program.verbose) {
     log.info(chalk`Running command transactions for name {yellow ${aName}}`);
   }
 
-  const json = await sbanken.accounts();
+  const json = await sb.accounts();
   const account = findAccountOrExit(json, aName);
 
   const from =
@@ -205,7 +226,7 @@ async function handleTransactions(aName, options) {
   }
 
   const { accountId, name, accountNumber, balance } = account;
-  const transactions = await sbanken.transactions({
+  const transactions: sbanken.TransactionList = await sb.transactions({
     accountId,
     from,
     to,
@@ -234,9 +255,9 @@ async function handleTransactions(aName, options) {
     '---------------------------------------------------'
   );
 
-  transactions.items.forEach((item) => {
+  transactions.items.forEach((item: sbanken.Transaction) => {
     let line = item.accountingDate.substr(0, 10) + ' ';
-    let amount = parseFloat(item.amount);
+    let amount: number | string = parseFloat(item.amount);
 
     amount =
       amount < 0
@@ -260,7 +281,7 @@ async function handleCustomers() {
     );
   }
 
-  const json = await sbanken.customers(api);
+  const json = await sb.customers(api);
   const pad = 8;
   console.log(
     'name:'.padEnd(pad),
@@ -269,7 +290,7 @@ async function handleCustomers() {
 
   console.log('email:'.padEnd(pad), chalk.white.bold(json.item.emailAddress));
 
-  let phones = '';
+  let phones: string = '';
   json.item.phoneNumbers.forEach((n) => {
     phones += `+${n.countryCode} ${n.number}, `;
   });
@@ -283,7 +304,7 @@ async function handleCustomers() {
   );
 }
 
-async function handleRequestError(res) {
+async function handleRequestError(res: fetch.Response) {
   const json = await res.json();
   console.log(
     chalk`{red ${res.status}} {white.bold ${res.statusText}} - ${json.errorMessage}`
@@ -292,7 +313,15 @@ async function handleRequestError(res) {
   process.exit(1);
 }
 
-function findAccountOrExit(accounts, name) {
+/**
+ * Takes an AccountList and returns an AccountInfo if there is a single
+ * regex match on the account name.
+ *
+ * @param accounts
+ * @param name
+ * @returns {sbanken.AccountInfo}
+ */
+function findAccountOrExit(accounts: sbanken.AccountList, name: string) {
   const list = accounts.items.filter((i) =>
     i.name.match(new RegExp(name, 'ui'))
   );
@@ -313,7 +342,7 @@ function findAccountOrExit(accounts, name) {
   return list[0];
 }
 
-function printAccountInfoRow(account) {
+function printAccountInfoRow(account: sbanken.AccountInfo) {
   console.log(
     account.name.padEnd(32),
     chalk.white.bold(`${account.available.toFixed(2)} kr`.padStart(15)),

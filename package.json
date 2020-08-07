@@ -8,26 +8,35 @@
     "cli",
     "sbanken"
   ],
-  "main": "./src/node-sbanken.js",
-  "module": "./src/node-sbanken.js",
+  "main": "./dist/src/node-sbanken.js",
+  "types": "./dist/src/node-sbanken.d.ts",
+  "module": "./dist/src/node-sbanken.js",
   "author": "Thomas Malt <thomas@malt.no>",
   "license": "MIT",
+  "files": [
+    "dist/**/*"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/tfmalt/node-sbanken.git"
   },
   "homepage": "https://github.com/tfmalt/node-sbanken.git",
   "bin": {
-    "sbanken": "./lib/cli.js",
-    "sb": "./lib/cli.js"
+    "sbanken": "./dist/src/cli.js",
+    "sb": "./dist/src/cli.js"
   },
   "scripts": {
-    "sbanken": "node ./lib/cli.js",
-    "debug_account": "node --nolazy --inspect-brk=9229 ./src/cli.js ac felles",
+    "sbanken": "node ./dist/src/cli.js",
     "test": "true",
-    "build": "tsc"
+    "build": "tsc",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test"
   },
   "devDependencies": {
+    "@types/btoa": "^1.2.3",
+    "@types/commander": "^2.12.2",
+    "@types/node": "^14.0.27",
+    "@types/node-fetch": "^2.5.7",
     "prettier": "2.0.5",
     "typescript": "^3.9.7"
   },

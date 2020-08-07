@@ -6,11 +6,11 @@
     "moduleResolution": "node",
     "declaration": true,
     "sourceMap": true,
-    "outDir": "./lib",
+    "outDir": "./dist",
     "resolveJsonModule": true,
     "strict": true
   },
   "lib": ["es2015"],
-  "include": ["src"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules"]
 }
