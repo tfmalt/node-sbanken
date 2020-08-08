@@ -1,10 +1,12 @@
-# SBanken API Wrapper (SDK) and command line tool
+# SBanken API Wrapper (SDK) and a command line tool
 
 [![Build Status](https://travis-ci.org/tfmalt/node-sbanken.svg?branch=master)](https://travis-ci.org/tfmalt/node-sbanken)
 
 ## API Wrapper (SDK)
 
-This is a simple object oriented wrapper for the Sbanken banking REST API's. It removes the hassle of implementing the rest calls directly. It provides a fairly straight forward promise based library. All functions will return a promise that can be processed further.
+This is intended as a simple object oriented wrapper for the Sbanken banking REST API's. It removes the hassle of implementing the rest calls directly. It provides a fairly straight forward promise and async/await based library. All functions will return a promise that can be processed further.
+
+The module supports typescript and has all types from the SBanken API included.
 
 ## Installing
 
@@ -28,6 +30,8 @@ npm install -g node-sbanken
 
 ## Using the library
 
+### Javascript
+
 ```javascript
 const Sbanken = require('./node-sbanken');
 
@@ -50,6 +54,27 @@ sbanken.accounts().then((data) => {
   const data = await sbanken.accounts();
   console.table(data.items);
 })();
+```
+
+### Typescript
+
+```typescript
+import * as sb from './node-sbanken';
+
+const credentials: sb.Credentials = {
+  clientId: 'real clientid removed',
+  secret: 'real secret removed',
+  userId: 'real userid removed',
+};
+
+const client = new sb.Sbanken(credentials);
+
+async function getAccounts(sbanken: sb.Sbanken): sb.AccountListResult {
+  return await sbanken.accounts():
+}
+
+const data: sb.AccountListResult = getAccounts(client);
+console.table(data.items);
 ```
 
 ## Command line tool

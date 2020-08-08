@@ -37,6 +37,7 @@
     "@types/commander": "^2.12.2",
     "@types/node": "^14.0.27",
     "@types/node-fetch": "^2.5.7",
+    "jsdoc-to-markdown": "^6.0.1",
     "prettier": "2.0.5",
     "typescript": "^3.9.7"
   },
