@@ -1,7 +1,7 @@
 import log from './log';
 import btoa from 'btoa';
 import * as fetch from 'node-fetch';
-import { URLSearchParams } from 'url';
+import { URL, URLSearchParams } from 'url';
 import fs from 'fs';
 import urls from './sbanken-urls.json';
 // import { stringify } from 'querystring';
@@ -19,6 +19,7 @@ import {
   TransferOptions,
   AccessTokenInfo,
   TransactionList,
+  TransferCreateRequest,
 } from './node-sbanken.types';
 
 export * from './node-sbanken.types';
@@ -55,17 +56,15 @@ export class Sbanken {
     this.credentials = credentials;
     this.opts = options;
 
-    this.credentials.clientId =
-      typeof credentials.clientId === 'string' ? credentials.clientId : '';
-    this.credentials.secret =
-      typeof credentials.secret === 'string' ? credentials.secret : '';
-    this.credentials.userId =
-      typeof credentials.userId === 'string' ? credentials.userId : '';
+    // log.debug('Credentials');
+    // console.log(this.credentials);
+
+    this.credentials.clientId = typeof credentials.clientId === 'string' ? credentials.clientId : '';
+    this.credentials.secret = typeof credentials.secret === 'string' ? credentials.secret : '';
+    this.credentials.userId = typeof credentials.userId === 'string' ? credentials.userId : '';
 
     this.clientCredentials = btoa(
-      encodeURIComponent(this.credentials.clientId) +
-        ':' +
-        encodeURIComponent(this.credentials.secret)
+      encodeURIComponent(this.credentials.clientId) + ':' + encodeURIComponent(this.credentials.secret)
     );
 
     this.urls = urls;
@@ -89,28 +88,17 @@ export class Sbanken {
    * @param {string} version
    */
   async customers(version: string = 'v1'): Promise<CustomerItemResult> {
-    const data = await this.getAccessToken();
     if (this.opts.verbose) {
       log.info('Fetching:', this.urls.customers[version]);
     }
-    // const headers: Headers = new Headers();
-    // headers.append('Authorization', `Bearer ${data.access_token}`);
-    // headers.append('Accept', 'application/json');
-    // headers.append('customerId', this.credentials.userId);
-
-    const res = await fetch.default(this.urls.customers[version], {
-      headers: {
-        Authorization: `Bearer ${data.access_token}`,
-        Accept: 'application/json',
-        customerId: this.credentials.userId,
-      },
-    });
+    const res = await this.__doRequest(this.urls.customers[version]);
 
     if (this.opts.verbose) {
       log.info(`Got response from server: ${res.status} ${res.statusText}`);
     }
 
     const json = await res.json();
+
     if (!res.ok) {
       throw new Error(res.status + ' ' + res.statusText + JSON.stringify(json));
     }
@@ -146,11 +134,9 @@ export class Sbanken {
   async transfer(options: TransferOptions): Promise<fetch.Response> {
     const token: AccessTokenInfo = await this.getAccessToken();
 
-    const msg =
-      options.message ||
-      `From ${options.from.name} to ${options.to.name}`.slice(0, 30);
+    const msg = options.message || `From ${options.from.name} to ${options.to.name}`.slice(0, 30);
 
-    const body = {
+    const body: TransferCreateRequest = {
       fromAccountId: options.from.accountId,
       toAccountId: options.to.accountId,
       message: msg,
@@ -160,16 +146,7 @@ export class Sbanken {
     if (this.opts.verbose) log.info('Fetching:', this.urls.transfer.v1);
     if (this.opts.verbose) log.debug('body:', JSON.stringify(body));
 
-    const res = await fetch.default(this.urls.transfer.v1, {
-      method: 'post',
-      body: JSON.stringify(body),
-      headers: {
-        Authorization: `Bearer ${token.access_token}`,
-        Accept: 'application/json',
-        customerId: this.credentials.userId,
-        'Content-Type': 'application/json',
-      },
-    });
+    const res = await this.__doRequest(this.urls.transfer.v1, body);
 
     if (res.ok) return res;
     if (res.status === 400) return res;
@@ -179,50 +156,20 @@ export class Sbanken {
   }
 
   /**
-   * Private function doing the actual web requests on behalf of url.
+   * List payments for account
    *
-   * @param {string} url The URI of the rest service
-   * @param {object=} body An optional body to be submitted.
-   * @returns {Promise<Response>}
+   * @param accountId
    */
-  async __doRequest(url: string, body?: object): Promise<fetch.Response> {
-    const token: AccessTokenInfo = await this.getAccessToken();
-
-    const res: fetch.Response = await fetch.default(url, {
-      headers: {
-        Authorization: `Bearer ${token.access_token}`,
-        Accept: 'application/json',
-        customerId: this.credentials.userId,
-      },
-    });
-
-    if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
-
-    return res;
-  }
-
   async payments(accountId: string) {
-    const token: AccessTokenInfo = await this.getAccessToken();
     const url = `${this.urls.payments.v1}/${accountId}`;
 
     if (this.opts.verbose) {
       console.log('Fetching Payments:', { accountId, url });
     }
 
-    const res = await fetch
-      .default(url, {
-        headers: {
-          Authorization: `Bearer ${token.access_token}`,
-          Accept: 'application/json',
-          customerId: this.credentials.userId,
-        },
-      })
-      .catch((e) => {
-        console.log('got exception error:', e);
-        process.exit();
-      });
-
+    const res = await this.__doRequest(url);
     if (res.ok) return res.json();
+
     console.log('Status:', res.status, 'msg:', res.statusText);
     throw new Error(`${res.status} ${res.statusText}`);
   }
@@ -237,43 +184,36 @@ export class Sbanken {
    * @param {integer} options.limit
    */
   async transactions(options: TransactionsOptions): Promise<TransactionList> {
-    const token = await this.getAccessToken();
     const { accountId, from, to, limit } = options;
 
     if (this.opts.verbose) {
       log.debug('Fetching transactions. Options:', JSON.stringify(options));
     }
-    let url = `${this.urls.transactions.v1}/${accountId}`;
 
-    url += `?length=${limit || 1000}`;
+    const url = new URL(`${this.urls.transactions.v1}/${accountId}`);
+
+    url.searchParams.append('length', String(limit || 1000));
+
     if (from instanceof Date) {
-      url += `&startDate=${from.toISOString().slice(0, 10)}`;
+      url.searchParams.append('startDate', from.toISOString().slice(0, 10));
     }
+
     if (to instanceof Date) {
-      url += `&endDate=${to.toISOString().slice(0, 10)}`;
+      url.searchParams.append('endDate', to.toISOString().slice(0, 10));
     }
 
     if (this.opts.verbose) {
-      log.info('Fetching transactions:', url);
+      log.info('Fetching transactions:', url.href);
     }
 
-    const res = await fetch.default(url, {
-      headers: {
-        Authorization: `Bearer ${token.access_token}`,
-        Accept: 'application/json',
-        customerId: this.credentials.userId,
-      },
-    });
-
+    const res = await this.__doRequest(url.href);
     const json = await res.json();
 
     if (res.ok) return json;
 
     console.debug(res.status, res.statusText);
     console.debug(json.errorType, ':', json.errorMessage);
-    throw new Error(
-      `${res.status} ${res.statusText} - ${json.errorType} ${json.errorMessage}`
-    );
+    throw new Error(`${res.status} ${res.statusText} - ${json.errorType} ${json.errorMessage}`);
   }
 
   /**
@@ -326,7 +266,7 @@ export class Sbanken {
       log.info('Fetching new access token.');
     }
 
-    const params = new URLSearchParams();
+    const params: URLSearchParams = new URLSearchParams();
     params.append('grant_type', 'client_credentials');
 
     try {
@@ -344,14 +284,45 @@ export class Sbanken {
       return json;
     } catch (err) {
       log.error('Received error from Sbanken:', err.message);
-    } finally {
       process.exit(1);
     }
   }
 
+  /**
+   * Private function doing the actual web requests on behalf of url.
+   *
+   * @param {string} url The URI of the rest service
+   * @param {object=} body An optional body to be submitted.
+   * @returns {Promise<Response>}
+   */
+  async __doRequest(url: string, body?: TransferCreateRequest): Promise<fetch.Response> {
+    const token: AccessTokenInfo = await this.getAccessToken();
+    const method = typeof body === 'undefined' ? 'GET' : 'POST';
+    const data = typeof body === 'undefined' ? undefined : JSON.stringify(body);
+
+    if (this.opts.verbose) {
+      log.info('Doing request:', method);
+    }
+
+    const res: fetch.Response = await fetch.default(url, {
+      method: method,
+      body: data,
+      headers: {
+        Authorization: `Bearer ${token.access_token}`,
+        Accept: 'application/json',
+        customerId: this.credentials.userId,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
+
+    return res;
+  }
+
   async __handleAccessTokenResponse(res: fetch.Response) {
     if (this.opts.verbose) {
-      log.info('Got response from server:', res.status, res.statusText);
+      log.info('  AccessToken response from server:', res.status, res.statusText);
     }
 
     if (!res.ok) {
@@ -363,19 +334,15 @@ export class Sbanken {
 
     try {
       if (this.opts.verbose) {
-        log.info('Storing access token in cache.');
+        log.info('  Storing access token in cache.');
       }
       if (!fs.existsSync(`${__dirname}/.cache`)) {
         fs.mkdirSync(`${__dirname}/.cache`);
       }
 
-      fs.writeFileSync(
-        `${__dirname}/.cache/accesstoken.json`,
-        JSON.stringify(json),
-        {
-          mode: 0o600,
-        }
-      );
+      fs.writeFileSync(`${__dirname}/.cache/accesstoken.json`, JSON.stringify(json), {
+        mode: 0o600,
+      });
     } catch (err) {
       throw err;
     }
@@ -400,11 +367,7 @@ export class Sbanken {
   }
 
   __testCredentials(c: Credentials): boolean {
-    if (
-      typeof c.clientId === 'string' &&
-      typeof c.secret === 'string' &&
-      typeof c.userId === 'string'
-    ) {
+    if (typeof c.clientId === 'string' && typeof c.secret === 'string' && typeof c.userId === 'string') {
       return true;
     }
     return false;

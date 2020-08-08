@@ -41,6 +41,14 @@ export interface CacheInfo {
   dir: string;
 }
 
+// https://api.sbanken.no/exec.bank/swagger/index.html?urls.primaryName=Transfers%20v1
+export interface TransferCreateRequest {
+  fromAccountId: string;
+  toAccountId: string;
+  message: string;
+  amount: number;
+}
+
 export interface TransferOptions {
   message?: string;
   from: Account;
@@ -67,13 +75,7 @@ export interface TransactionList {
   items: any;
 }
 
-export type ErrorType =
-  | 'System'
-  | 'Input'
-  | 'State'
-  | 'ServiceUnavailable'
-  | 'CustomHttpStatus'
-  | 'NotFound';
+export type ErrorType = 'System' | 'Input' | 'State' | 'ServiceUnavailable' | 'CustomHttpStatus' | 'NotFound';
 
 export interface AccountListResult {
   availableItems: number;
@@ -96,15 +98,31 @@ export interface Account {
   creditLimit: number;
 }
 
-export interface PaymentInfo {
-  beneficiaryName: string;
-  productType: string;
-  dueDate: string;
+export interface Payment {
+  paymentId: string;
+  recipientAccountNumber: string;
   amount: number;
+  dueDate: string;
+  kid: string | null;
+  text: string | null;
+  isActive: boolean;
+  status: string;
+  allowedNewStatusTypes: 'Stopped' | 'Reactivated' | 'IgnoreLimit';
+  statusDetail: string;
+  productType: string;
+  paymentType: string;
+  paymentNumber: number;
+  beneficiaryName: string | null;
 }
 
-export interface PaymentList {
-  items: PaymentInfo[];
+export interface PaymentListResult {
+  availableItems: number;
+  items: Payment[];
+  errorType: ErrorType | null;
+  isError: boolean;
+  errorCode: number | null;
+  errorMessage: string | null;
+  traceId: string | null;
 }
 
 export interface CustomerItemResult {

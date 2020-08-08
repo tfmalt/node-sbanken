@@ -25,10 +25,7 @@ const sb = new sbanken.Sbanken(credentials);
 program.version(sb.version).description(sb.description);
 program.option('-v, --verbose', 'Tell the program to be verbose');
 
-program
-  .command('accounts')
-  .description('List all accounts')
-  .action(handleAccounts);
+program.command('accounts').description('List all accounts').action(handleAccounts);
 
 program
   .command('account [name]')
@@ -40,17 +37,13 @@ program
   .command('customers')
   .alias('cu')
   .option('-a --api_version [version]', 'Version of API to use, v1 or v2')
-  .description(
-    'Print out information about the customer associated with the current userId.'
-  )
+  .description('Print out information about the customer associated with the current userId.')
   .action(handleCustomers);
 
 program
   .command('transactions <name>')
   .alias('tr')
-  .description(
-    'Print out transactions for the account matching the provided name.'
-  )
+  .description('Print out transactions for the account matching the provided name.')
   .usage('[options] <name>')
   .option('-f --from <yyyy-mm-dd>', 'From date')
   .option('-t --to <yyyy-mm-dd>', 'To date')
@@ -80,10 +73,7 @@ program.on('option:verbose', function () {
 });
 
 program.on('command:*', function () {
-  console.error(
-    'Invalid command: %s\nSee --help for a list of available commands.',
-    program.args.join(' ')
-  );
+  console.error('Invalid command: %s\nSee --help for a list of available commands.', program.args.join(' '));
   process.exit(1);
 });
 program.parse(process.argv);
@@ -148,9 +138,7 @@ async function handleTransfer(amount: string, options: HandleTransferOptions) {
   const to: sbanken.Account = findAccountOrExit(accounts, options.to);
   const message = options.message ? options.message.slice(0, 30) : undefined;
 
-  console.log(
-    chalk`Transferring {white.bold ${parseFloat(amount).toFixed(2)} kr}`
-  );
+  console.log(chalk`Transferring {white.bold ${parseFloat(amount).toFixed(2)} kr}`);
   console.log(
     chalk`From: {red.bold ${from.name}} ({yellow ${from.accountNumber}}), To: {green.bold ${to.name}} ({yellow ${to.accountNumber}})`
   );
@@ -160,9 +148,7 @@ async function handleTransfer(amount: string, options: HandleTransferOptions) {
 
   if (!res.ok) return handleRequestError(res);
 
-  console.log(
-    chalk`{blue ${res.status}} {white.bold ${res.statusText}} - Transfer successful`
-  );
+  console.log(chalk`{blue ${res.status}} {white.bold ${res.statusText}} - Transfer successful`);
 
   const updatedAccounts: sbanken.AccountListResult = await sb.accounts();
   updatedAccounts.items
@@ -174,6 +160,11 @@ async function handleTransfer(amount: string, options: HandleTransferOptions) {
     .forEach((i) => printAccountInfoRow(i));
 }
 
+/**
+ * Fetches payments registered for an account.
+ *
+ * @param aName partial name of the account to fetch payments for
+ */
 async function handlePayments(aName: string) {
   if (program.verbose) {
     log.info('Running command payments');
@@ -186,7 +177,11 @@ async function handlePayments(aName: string) {
     console.log('account:', account);
   }
 
-  const payments: sbanken.PaymentList = await sb.payments(account.accountId);
+  const payments: sbanken.PaymentListResult = await sb.payments(account.accountId);
+
+  if (program.verbose) {
+    console.log(payments);
+  }
 
   console.log(
     chalk`name: {yellow ${account.name}}  account number: {yellow ${
@@ -195,15 +190,14 @@ async function handlePayments(aName: string) {
   );
   console.log();
   payments.items
-    .sort((a: sbanken.PaymentInfo, b: sbanken.PaymentInfo) =>
-      new Date(a.dueDate) > new Date(b.dueDate) ? 1 : -1
-    )
+    .sort((a: sbanken.Payment, b: sbanken.Payment) => (new Date(a.dueDate) > new Date(b.dueDate) ? 1 : -1))
     .forEach((item) => {
+      const bName = item.beneficiaryName || '';
       console.log(
         item.dueDate.slice(0, 10).padEnd(11),
         chalk`{red.bold ${item.amount.toFixed(2).padStart(11)}}`,
         chalk`{cyan ${item.productType.padStart(11).padEnd(12)}}`,
-        chalk`${item.beneficiaryName.padEnd(52)}`
+        chalk`${bName.padEnd(52)}`
       );
     });
   // console.log(payments);
@@ -216,10 +210,7 @@ async function handlePayments(aName: string) {
  * @param {Object} options
  *
  */
-async function handleTransactions(
-  aName: string,
-  options: HandleTransactionsOptions
-) {
+async function handleTransactions(aName: string, options: HandleTransactionsOptions) {
   if (program.verbose) {
     log.info(chalk`Running command transactions for name {yellow ${aName}}`);
   }
@@ -227,11 +218,9 @@ async function handleTransactions(
   const json = await sb.accounts();
   const account = findAccountOrExit(json, aName);
 
-  const from =
-    typeof options.from === 'undefined' ? undefined : new Date(options.from);
+  const from = typeof options.from === 'undefined' ? undefined : new Date(options.from);
 
-  const to =
-    typeof options.to === 'undefined' ? undefined : new Date(options.to);
+  const to = typeof options.to === 'undefined' ? undefined : new Date(options.to);
 
   if (program.verbose) {
     log.info('Fetching transactions for account:', account.name);
@@ -253,12 +242,7 @@ async function handleTransactions(
     chalk`name: {white.bold ${name}}  account number: {white.bold ${accountNumber}}  balance: {white.bold ${balance}}`
   );
 
-  console.log(
-    'Date'.padEnd(11),
-    'Amount'.padStart(11),
-    ' Type'.padEnd(21),
-    'Description'.padEnd(40)
-  );
+  console.log('Date'.padEnd(11), 'Amount'.padStart(11), ' Type'.padEnd(21), 'Description'.padEnd(40));
 
   console.log(
     '---------- ',
@@ -272,9 +256,7 @@ async function handleTransactions(
     let amount: number | string = parseFloat(item.amount);
 
     amount =
-      amount < 0
-        ? chalk.bold.red(amount.toFixed(2).padStart(12))
-        : chalk.bold.green(amount.toFixed(2).padStart(12));
+      amount < 0 ? chalk.bold.red(amount.toFixed(2).padStart(12)) : chalk.bold.green(amount.toFixed(2).padStart(12));
 
     line += amount + ' ';
     line += chalk.bold.yellow(item.transactionTypeCode.toString().padStart(4));
@@ -288,17 +270,12 @@ async function handleTransactions(
 async function handleCustomers() {
   let api = program.api_version || 'v1';
   if (program.verbose) {
-    log.info(
-      chalk`{yellow \uf45f} Fetching customer information. version: {white.bold ${api}}.`
-    );
+    log.info(chalk`{yellow \uf45f} Fetching customer information. version: {white.bold ${api}}.`);
   }
 
   const json = await sb.customers(api);
   const pad = 8;
-  console.log(
-    'name:'.padEnd(pad),
-    chalk.white.bold(`${json.item.firstName} ${json.item.lastName}`)
-  );
+  console.log('name:'.padEnd(pad), chalk.white.bold(`${json.item.firstName} ${json.item.lastName}`));
 
   console.log('email:'.padEnd(pad), chalk.white.bold(json.item.emailAddress));
 
@@ -318,9 +295,7 @@ async function handleCustomers() {
 
 async function handleRequestError(res: fetch.Response) {
   const json = await res.json();
-  console.log(
-    chalk`{red ${res.status}} {white.bold ${res.statusText}} - ${json.errorMessage}`
-  );
+  console.log(chalk`{red ${res.status}} {white.bold ${res.statusText}} - ${json.errorMessage}`);
 
   process.exit(1);
 }
@@ -334,20 +309,14 @@ async function handleRequestError(res: fetch.Response) {
  * @returns {sbanken.AccountInfo}
  */
 function findAccountOrExit(accounts: sbanken.AccountListResult, name: string) {
-  const list = accounts.items.filter((i) =>
-    i.name.match(new RegExp(name, 'ui'))
-  );
+  const list = accounts.items.filter((i) => i.name.match(new RegExp(name, 'ui')));
 
   if (list.length === 0) {
-    console.error(
-      chalk`{red error} - Could not find an account with {red ${name}} in name.`
-    );
+    console.error(chalk`{red error} - Could not find an account with {red ${name}} in name.`);
     process.exit(1);
   }
   if (list.length > 1) {
-    console.error(
-      chalk`{red error} - Found multiple accounts with {red ${name}} in name.`
-    );
+    console.error(chalk`{red error} - Found multiple accounts with {red ${name}} in name.`);
     process.exit(1);
   }
 
@@ -382,14 +351,11 @@ function setupCredentials() {
   if (
     typeof credentials.secret === 'string' &&
     typeof credentials.clientId === 'string' &&
-    (typeof credentials.userId === 'string' ||
-      typeof credentials.userId === 'number')
+    (typeof credentials.userId === 'string' || typeof credentials.userId === 'number')
   ) {
     return true;
   } else {
-    console.log(
-      chalk`{red error} {white You need to provide correct credentials for the app to work.}`
-    );
+    console.log(chalk`{red error} {white You need to provide correct credentials for the app to work.}`);
     process.exit(1);
   }
 }
