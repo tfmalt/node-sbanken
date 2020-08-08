@@ -107,20 +107,28 @@ async function handleAccounts() {
   console.table(json.items);
 }
 
-async function handleAccount(name: string) {
+async function handleAccount(name?: string) {
   if (program.verbose) {
-    log.info('Told to list account by name: ' + name);
+    if (typeof name === 'undefined') {
+      log.info('Told to list all accounts');
+    } else {
+      log.info('Told to list account by name: ' + name);
+    }
   }
 
-  const regex: RegExp = new RegExp(name, 'ui');
+  const str: string = typeof name === 'undefined' ? '' : name;
+  const regex: RegExp = new RegExp(str, 'ui');
   const json: sbanken.AccountListResult = await sb.accounts();
 
-  json.items
-    .filter((item: sbanken.Account) =>
-      item.name === 'string' ? item.name.match(regex) : false
-    )
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .forEach((item) => printAccountInfoRow(item));
+  const list: sbanken.Account[] = json.items
+    .filter((item: sbanken.Account) => item.name.match(regex))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  if (list.length > 0) {
+    list.forEach((item) => printAccountInfoRow(item));
+  } else {
+    console.log(chalk`Could not find an account with {red ${name}} in name.`);
+  }
 }
 
 /**
