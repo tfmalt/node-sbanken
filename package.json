@@ -30,6 +30,7 @@
     "test": "true",
     "build": "tsc",
     "prepare": "npm run build",
+    "install": "npm run bulid",
     "prepublishOnly": "npm test"
   },
   "devDependencies": {
