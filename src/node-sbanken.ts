@@ -137,22 +137,6 @@ export class Sbanken {
     return res.json();
   }
 
-  async __doRequest(url: string, body?: object): Promise<fetch.Response> {
-    const token: AccessTokenInfo = await this.getAccessToken();
-
-    const res: fetch.Response = await fetch.default(url, {
-      headers: {
-        Authorization: `Bearer ${token.access_token}`,
-        Accept: 'application/json',
-        customerId: this.credentials.userId,
-      },
-    });
-
-    if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
-
-    return res;
-  }
-
   /**
    * Transfer money between accounts
    *
@@ -192,6 +176,29 @@ export class Sbanken {
 
     const json = await res.json();
     throw new Error(`${res.status} ${res.statusText} ${JSON.stringify(json)}`);
+  }
+
+  /**
+   * Private function doing the actual web requests on behalf of url.
+   *
+   * @param {string} url The URI of the rest service
+   * @param {object=} body An optional body to be submitted.
+   * @returns {Promise<Response>}
+   */
+  async __doRequest(url: string, body?: object): Promise<fetch.Response> {
+    const token: AccessTokenInfo = await this.getAccessToken();
+
+    const res: fetch.Response = await fetch.default(url, {
+      headers: {
+        Authorization: `Bearer ${token.access_token}`,
+        Accept: 'application/json',
+        customerId: this.credentials.userId,
+      },
+    });
+
+    if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
+
+    return res;
   }
 
   async payments(accountId: string) {
