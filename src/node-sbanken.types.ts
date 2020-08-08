@@ -60,7 +60,7 @@ export interface TransactionsOptions {
   accountId: string;
   from?: Date;
   to?: Date;
-  limit: number;
+  limit?: number;
 }
 
 export interface Transaction {
