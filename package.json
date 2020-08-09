@@ -30,12 +30,11 @@
     "test": "true",
     "build": "tsc",
     "prepare": "npm run build",
-    "install": "npm run bulid",
+    "install": "npm run build",
     "prepublishOnly": "npm test"
   },
   "devDependencies": {
     "@types/btoa": "^1.2.3",
-    "@types/commander": "^2.12.2",
     "@types/node": "^14.0.27",
     "@types/node-fetch": "^2.5.7",
     "jsdoc-to-markdown": "^6.0.1",
