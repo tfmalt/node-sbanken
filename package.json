@@ -17,6 +17,10 @@
     "dist/**/*",
     "src/**/*"
   ],
+  "bin": {
+    "sbanken": "./dist/src/cli.js",
+    "sb": "./dist/src/cli.js"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/tfmalt/node-sbanken.git"
