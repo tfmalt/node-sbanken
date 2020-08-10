@@ -14,7 +14,8 @@
   "author": "Thomas Malt <thomas@malt.no>",
   "license": "MIT",
   "files": [
-    "dist/**/*"
+    "dist/**/*",
+    "src/**/*"
   ],
   "repository": {
     "type": "git",
