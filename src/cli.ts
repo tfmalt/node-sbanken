@@ -1,11 +1,9 @@
 #!/usr/bin/env node
-import credentials from '../etc/sbanken.json';
 import * as sbanken from './node-sbanken';
 import * as fetch from 'node-fetch';
 import log from './log';
 import program from 'commander';
 import chalk from 'chalk';
-import { AccountListResult } from './node-sbanken.types';
 
 interface HandleTransferOptions {
   from: string;
@@ -19,7 +17,7 @@ interface HandleTransactionsOptions {
   limit: number;
 }
 
-setupCredentials();
+const credentials: sbanken.Credentials = getCredentials();
 const sb = new sbanken.Sbanken(credentials);
 
 program.version(sb.version).description(sb.description);
@@ -334,28 +332,22 @@ function printAccountInfoRow(account: sbanken.Account) {
 /**
  * Reads in credentials from the environments and sets up the credentials object
  * Verify that credentials exist and prints an error if they do not.
+ *
+ * @returns {sbanken.Credentials}
  */
-function setupCredentials() {
-  if (process.env.SBANKEN_SECRET) {
-    credentials.secret = process.env.SBANKEN_SECRET;
-  }
-
-  if (process.env.SBANKEN_CLIENTID) {
-    credentials.clientId = process.env.SBANKEN_CLIENTID;
-  }
-
-  if (process.env.SBANKEN_USERID) {
-    credentials.userId = process.env.SBANKEN_USERID;
-  }
-
+function getCredentials(): sbanken.Credentials {
   if (
-    typeof credentials.secret === 'string' &&
-    typeof credentials.clientId === 'string' &&
-    (typeof credentials.userId === 'string' || typeof credentials.userId === 'number')
+    typeof process.env.SBANKEN_SECRET !== 'string' ||
+    typeof process.env.SBANKEN_CLIENTID !== 'string' ||
+    typeof process.env.SBANKEN_USERID !== 'string'
   ) {
-    return true;
-  } else {
     console.log(chalk`{red error} {white You need to provide correct credentials for the app to work.}`);
     process.exit(1);
   }
+
+  return {
+    secret: process.env.SBANKEN_SECRET,
+    clientId: process.env.SBANKEN_CLIENTID,
+    userId: process.env.SBANKEN_USERID,
+  };
 }
