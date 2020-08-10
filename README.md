@@ -1,6 +1,6 @@
 # SBanken API Wrapper (SDK) and a command line tool
 
-[![npm version](https://badge.fury.io/js/cron-emitter.svg)](http://badge.fury.io/js/cron-emitter)
+[![npm version](https://badge.fury.io/js/node-sbanken.svg)](http://badge.fury.io/js/node-sbanken)
 [![Build Status](https://travis-ci.org/tfmalt/node-sbanken.svg?branch=master)](https://travis-ci.org/tfmalt/node-sbanken)
 
 ## API Wrapper (SDK)
@@ -139,24 +139,16 @@ Options:
 
 ## Security
 
-If you want to try the tool be mindful of how you store and provide the application with the secrets. The package has two ways of providing the credentials:
+The command line tool expects you to provide the credentials through the following environment variables:
 
-- By adding the credentials to the configuration file `./etc/sbanken.json`
-- This might be preferred if you want to use the command line tool on a computer with an account you trust fully.
-
-```json
-{
-  "clientId": "Add clientid here",
-  "secret": "Add secret here",
-  "userId": "Add user id here"
-}
-```
-
-- By adding them as environment variables (every time running the tool, or when starting an app using the library)
-- This might be preferred if you want to use the library to build a web app or similar.
+- SBANKEN_SECRET
+- SBANKEN_CLIENTID
+- SBANKEN_USERID
 
 ```bash
-SBANKEN_CLIENTID="add clientid" SBANKEN_SECRET="add secret" SBANKEN_USERID="add userid" node ./app.js
+SBANKEN_CLIENTID="add clientid" SBANKEN_SECRET="add secret" SBANKEN_USERID="add userid" npx sbanken
 ```
 
-Regardless. By making the credentials accessible you expose yourself to the risk of a third party getting hold of your banking details. Only use the library or tool if you understand the risk and how to deal with them properly.
+To use the SDK you need to provide the credentials to the constructor.
+
+By making the credentials accessible through code or in your terminal you expose yourself to the risk of a third party getting hold of your banking details. Only use the library or tool if you understand the risk and how to deal with them properly.
