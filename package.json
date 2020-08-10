@@ -21,10 +21,6 @@
     "url": "https://github.com/tfmalt/node-sbanken.git"
   },
   "homepage": "https://github.com/tfmalt/node-sbanken.git",
-  "bin": {
-    "sbanken": "./dist/src/cli.js",
-    "sb": "./dist/src/cli.js"
-  },
   "scripts": {
     "sbanken": "node ./dist/src/cli.js",
     "test": "true",
