@@ -3,7 +3,7 @@ import { Address } from 'cluster';
 export interface AccessTokenInfo {
   expires_in: number;
   access_token: string;
-  date: string;
+  date?: string;
   token_type: string;
   scope: string;
 }

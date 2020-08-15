@@ -1,11 +1,9 @@
 import log from './log';
 import btoa from 'btoa';
 import * as fetch from 'node-fetch';
-import { URL, URLSearchParams } from 'url';
-import fs from 'fs';
+import { URL } from 'url';
 import urls from './sbanken-urls.json';
-// import { stringify } from 'querystring';
-const fsp = fs.promises;
+import accessToken, { AccessTokenData } from './access-token';
 import { version, author, description } from '../package.json';
 
 import {
@@ -56,6 +54,7 @@ export class Sbanken {
     this.credentials = credentials;
     this.opts = options;
 
+    accessToken.debug(options.verbose);
     // log.debug('Credentials');
     // console.log(this.credentials);
 
@@ -78,8 +77,10 @@ export class Sbanken {
     };
   }
 
-  options(opts = {}) {
+  private options(opts = {}) {
+    // console.log('Sbanken.options called:', opts);
     this.opts = Object.assign(this.opts, opts);
+    accessToken.debug(this.opts.verbose);
   }
 
   /**
@@ -132,10 +133,7 @@ export class Sbanken {
    * @returns {Promise<fetch.Response>}
    */
   async transfer(options: TransferOptions): Promise<fetch.Response> {
-    const token: AccessTokenInfo = await this.getAccessToken();
-
     const msg = options.message || `From ${options.from.name} to ${options.to.name}`.slice(0, 30);
-
     const body: TransferCreateRequest = {
       fromAccountId: options.from.accountId,
       toAccountId: options.to.accountId,
@@ -217,78 +215,6 @@ export class Sbanken {
   }
 
   /**
-   * Fetches a valid accessToken.
-   * If an existing valid access token exists that is returned
-   *
-   * @returns {Promise<AccessTokenInfo>}
-   */
-  async getAccessToken(): Promise<AccessTokenInfo> {
-    if (this.opts.verbose) {
-      log.info('Fetching access token');
-    }
-
-    if (!fs.existsSync(this.cache.file)) {
-      return this.refreshAccessToken();
-    }
-
-    return fsp
-      .access(this.cache.file, fs.constants.R_OK)
-      .then(() => {
-        if (this.opts.verbose) {
-          log.info('Found cached access token:');
-          log.info('  ', this.cache.file);
-        }
-        return fsp.readFile(this.cache.file);
-      })
-      .then((data: Buffer) => JSON.parse(data.toString()))
-      .then((data: AccessTokenInfo) => {
-        if (this.__isAccessTokenFresh(data)) {
-          return data;
-        } else {
-          if (this.opts.verbose) {
-            log.info('Current access token stale.');
-          }
-
-          return this.refreshAccessToken();
-        }
-      })
-      .catch((err) => {
-        log.error(err.message);
-        process.exit(1);
-      });
-  }
-
-  /**
-   * Get a new access token from the sbanken service
-   */
-  async refreshAccessToken(): Promise<AccessTokenInfo> {
-    if (this.opts.verbose) {
-      log.info('Fetching new access token.');
-    }
-
-    const params: URLSearchParams = new URLSearchParams();
-    params.append('grant_type', 'client_credentials');
-
-    try {
-      const res: fetch.Response = await fetch.default(this.urls.auth, {
-        method: 'post',
-        body: params,
-        headers: {
-          Accept: 'application/json',
-          Authorization: `Basic ${this.clientCredentials}`,
-          customerId: this.credentials.userId,
-        },
-      });
-
-      const json = await this.__handleAccessTokenResponse(res);
-      return json;
-    } catch (err) {
-      log.error('Received error from Sbanken:', err.message);
-      process.exit(1);
-    }
-  }
-
-  /**
    * Private function doing the actual web requests on behalf of url.
    *
    * @param {string} url The URI of the rest service
@@ -296,9 +222,11 @@ export class Sbanken {
    * @returns {Promise<Response>}
    */
   async __doRequest(url: string, body?: TransferCreateRequest): Promise<fetch.Response> {
-    const token: AccessTokenInfo = await this.getAccessToken();
     const method = typeof body === 'undefined' ? 'GET' : 'POST';
     const data = typeof body === 'undefined' ? undefined : JSON.stringify(body);
+
+    const tokenData: AccessTokenData = await accessToken.get(this.credentials);
+    const token = tokenData.info;
 
     if (this.opts.verbose) {
       log.info('Doing request:', method);
@@ -318,52 +246,6 @@ export class Sbanken {
     if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
 
     return res;
-  }
-
-  async __handleAccessTokenResponse(res: fetch.Response) {
-    if (this.opts.verbose) {
-      log.info('  AccessToken response from server:', res.status, res.statusText);
-    }
-
-    if (!res.ok) {
-      throw new Error(`${res.status} ${res.statusText}`);
-    }
-
-    const json = await res.json();
-    json.date = new Date().toJSON();
-
-    try {
-      if (this.opts.verbose) {
-        log.info('  Storing access token in cache.');
-      }
-      if (!fs.existsSync(`${__dirname}/.cache`)) {
-        fs.mkdirSync(`${__dirname}/.cache`);
-      }
-
-      fs.writeFileSync(`${__dirname}/.cache/accesstoken.json`, JSON.stringify(json), {
-        mode: 0o600,
-      });
-    } catch (err) {
-      throw err;
-    }
-
-    return json;
-  }
-
-  __isAccessTokenFresh(data: AccessTokenInfo): boolean {
-    const then: Date = new Date(data.date);
-    const now: Date = new Date();
-
-    if (then.getTime() + (data.expires_in - 300) * 1000 > now.getTime()) {
-      if (this.opts.verbose) {
-        log.info('Token is still fresh.');
-      }
-      return true;
-    }
-    if (this.opts.verbose) {
-      log.info('Token is stale.');
-    }
-    return false;
   }
 
   __testCredentials(c: Credentials): boolean {
