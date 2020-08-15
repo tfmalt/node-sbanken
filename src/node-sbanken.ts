@@ -214,6 +214,7 @@ export class Sbanken {
       throw new Error(`${res.status} ${res.statusText} - ${json.errorType} ${json.errorMessage}`);
     } catch (e) {
       console.log('Got an error for url:', e);
+      throw e;
     }
   }
 
