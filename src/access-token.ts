@@ -70,7 +70,7 @@ const access = {
       },
     };
 
-    DEBUG && console.log('access-token get init:', init);
+    DEBUG && console.log('access-token get init:', JSON.stringify(init));
 
     return fetch
       .default(urls.auth, init)
