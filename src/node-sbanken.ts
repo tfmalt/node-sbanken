@@ -189,6 +189,7 @@ export class Sbanken {
     }
 
     const url = new URL(`${this.urls.transactions.v1}/${accountId}`);
+    this.opts.verbose && log.debug('  url:', url.href);
 
     url.searchParams.append('length', String(limit || 1000));
 
