@@ -1,7 +1,7 @@
 import log from './log';
 import btoa from 'btoa';
 import * as fetch from 'node-fetch';
-import { URL } from 'url';
+// import { URL } from 'url';
 import urls from './sbanken-urls.json';
 import accessToken, { AccessTokenData } from './access-token';
 import { version, author, description } from '../package.json';
@@ -182,37 +182,39 @@ export class Sbanken {
    * @param {integer} options.limit
    */
   async transactions(options: TransactionsOptions): Promise<TransactionList> {
+    const V = this.opts.verbose;
     const { accountId, from, to, limit } = options;
 
-    if (this.opts.verbose) {
-      log.debug('Fetching transactions. Options:', JSON.stringify(options));
+    V && log.debug('Fetching transactions. Options:', JSON.stringify(options));
+
+    try {
+      const url = new URL(`${this.urls.transactions.v1}/${accountId}`);
+      V && log.debug('  url:', url.href);
+      url.searchParams.append('length', String(limit || 1000));
+
+      if (from instanceof Date) {
+        url.searchParams.append('startDate', from.toISOString().slice(0, 10));
+      }
+
+      if (to instanceof Date) {
+        url.searchParams.append('endDate', to.toISOString().slice(0, 10));
+      }
+
+      if (this.opts.verbose) {
+        log.info('Fetching transactions:', url.href);
+      }
+
+      const res = await this.__doRequest(url.href);
+      const json = await res.json();
+
+      if (res.ok) return json;
+
+      console.debug(res.status, res.statusText);
+      console.debug(json.errorType, ':', json.errorMessage);
+      throw new Error(`${res.status} ${res.statusText} - ${json.errorType} ${json.errorMessage}`);
+    } catch (e) {
+      console.log('Got an error for url:', e);
     }
-
-    const url = new URL(`${this.urls.transactions.v1}/${accountId}`);
-    this.opts.verbose && log.debug('  url:', url.href);
-
-    url.searchParams.append('length', String(limit || 1000));
-
-    if (from instanceof Date) {
-      url.searchParams.append('startDate', from.toISOString().slice(0, 10));
-    }
-
-    if (to instanceof Date) {
-      url.searchParams.append('endDate', to.toISOString().slice(0, 10));
-    }
-
-    if (this.opts.verbose) {
-      log.info('Fetching transactions:', url.href);
-    }
-
-    const res = await this.__doRequest(url.href);
-    const json = await res.json();
-
-    if (res.ok) return json;
-
-    console.debug(res.status, res.statusText);
-    console.debug(json.errorType, ':', json.errorMessage);
-    throw new Error(`${res.status} ${res.statusText} - ${json.errorType} ${json.errorMessage}`);
   }
 
   /**
