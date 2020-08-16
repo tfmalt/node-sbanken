@@ -213,7 +213,7 @@ export class Sbanken {
       console.debug(json.errorType, ':', json.errorMessage);
       throw new Error(`${res.status} ${res.statusText} - ${json.errorType} ${json.errorMessage}`);
     } catch (e) {
-      console.log('Got an error for url:', e);
+      console.log('Got an error for url:', JSON.stringify(e));
       throw e;
     }
   }
