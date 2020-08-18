@@ -31,6 +31,8 @@ npm install -g node-sbanken
 
 ## Using the library
 
+To use the library you first of all need to sign up for beta bank features at Sbanken: [Utviklerportalen](https://sbanken.no/bruke/utviklerportalen/)
+
 ### Javascript
 
 ```javascript
