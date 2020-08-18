@@ -1,6 +1,4 @@
 import urls from './sbanken-urls.json';
-import __btoa from './myBtoa';
-import __fetch from './myFetch';
 import { AccessTokenInfo, Credentials } from './node-sbanken';
 
 export interface AccessTokenData {
@@ -59,6 +57,9 @@ const access = {
     if (fresh) return tokenStore.info();
 
     DEBUG && console.log('access-token not fresh. fetching...');
+
+    const __btoa = typeof btoa === 'undefined' ? require('btoa') : btoa;
+    const __fetch = typeof fetch === 'undefined' ? require('node-fetch') : fetch;
 
     const params = new URLSearchParams({ grant_type: 'client_credentials' });
 

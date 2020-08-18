@@ -1,5 +1,4 @@
 import log from './log';
-import __fetch from './myFetch';
 import urls from './sbanken-urls.json';
 import accessToken, { AccessTokenData } from './access-token';
 import { version, author, description } from '../package.json';
@@ -216,6 +215,8 @@ export class Sbanken {
     if (this.opts.verbose) {
       log.info('Doing request:', method);
     }
+
+    const __fetch = typeof fetch === 'undefined' ? require('node-fetch') : fetch;
 
     const res: Response = await __fetch(url, {
       method: method,
