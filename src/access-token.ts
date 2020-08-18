@@ -62,6 +62,8 @@ const access = {
 
     const params = new URLSearchParams({ grant_type: 'client_credentials' });
 
+    DEBUG && console.log('url params:', params.toString());
+
     const auth = __btoa(`${encodeURIComponent(creds.clientId)}:${encodeURIComponent(creds.secret)}`);
     const init = {
       method: 'post',
@@ -72,7 +74,7 @@ const access = {
       },
     };
 
-    // DEBUG && console.log('access-token get init:', JSON.stringify(init));
+    DEBUG && console.log('access-token get init:', JSON.stringify(init));
     // DEBUG && console.log('  params:', init.body.toString());
 
     const res = await __fetch(urls.auth, init);
