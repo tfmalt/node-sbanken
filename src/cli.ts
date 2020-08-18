@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import * as sbanken from './node-sbanken';
-import * as fetch from 'node-fetch';
 import log from './log';
 import program from 'commander';
 import chalk from 'chalk';
@@ -213,7 +212,10 @@ async function handleTransactions(aName: string, options: HandleTransactionsOpti
     log.info(chalk`Running command transactions for name {yellow ${aName}}`);
   }
 
-  const json = await sb.accounts();
+  const json = await sb.accounts().catch((e) => {
+    console.log(chalk`{red.bold API Error} {white.bold ${e.message}}`);
+    process.exit(1);
+  });
   const account = findAccountOrExit(json, aName);
 
   const from = typeof options.from === 'undefined' ? undefined : new Date(options.from);
@@ -225,12 +227,17 @@ async function handleTransactions(aName: string, options: HandleTransactionsOpti
   }
 
   const { accountId, name, accountNumber, balance } = account;
-  const transactions: sbanken.TransactionList = await sb.transactions({
-    accountId,
-    from,
-    to,
-    limit: options.limit,
-  });
+  const transactions: sbanken.TransactionList = await sb
+    .transactions({
+      accountId,
+      from,
+      to,
+      limit: options.limit,
+    })
+    .catch((e) => {
+      console.log(chalk`{red.bold API Error} {yellow.bold ${e.message}}`);
+      process.exit(1);
+    });
 
   if (program.verbose) {
     log.info('Available items:', transactions.availableItems);
@@ -291,7 +298,7 @@ async function handleCustomers() {
   );
 }
 
-async function handleRequestError(res: fetch.Response) {
+async function handleRequestError(res: Response) {
   const json = await res.json();
   console.log(chalk`{red ${res.status}} {white.bold ${res.statusText}} - ${json.errorMessage}`);
 
@@ -339,15 +346,15 @@ function getCredentials(): sbanken.Credentials {
   if (
     typeof process.env.SBANKEN_SECRET !== 'string' ||
     typeof process.env.SBANKEN_CLIENTID !== 'string' ||
-    typeof process.env.SBANKEN_USERID !== 'string'
+    typeof process.env.SBANKEN_CUSTOMERID !== 'string'
   ) {
-    console.log(chalk`{red error} {white You need to provide correct credentials for the app to work.}`);
+    console.log(chalk`{red error} {white Missing credentials - You need to provide them for the app to work.}`);
     process.exit(1);
   }
 
   return {
     secret: process.env.SBANKEN_SECRET,
     clientId: process.env.SBANKEN_CLIENTID,
-    userId: process.env.SBANKEN_USERID,
+    customerId: process.env.SBANKEN_CUSTOMERID,
   };
 }

@@ -1,7 +1,5 @@
 import log from './log';
-import btoa from 'btoa';
-import * as fetch from 'node-fetch';
-// import { URL } from 'url';
+import __fetch from './myFetch';
 import urls from './sbanken-urls.json';
 import accessToken, { AccessTokenData } from './access-token';
 import { version, author, description } from '../package.json';
@@ -28,7 +26,6 @@ export * from './node-sbanken.types';
 export class Sbanken {
   credentials: Credentials;
   opts: Options;
-  clientCredentials: string;
   urls: Urls;
   version: string;
   description: string;
@@ -40,7 +37,7 @@ export class Sbanken {
    * {
    *   clientId: 'the clientid of your sbanken app'
    *   secret: 'the current secret of your app'
-   *   userId: 'Your userid'
+   *   customerId: 'Your customer id - norwegian personnummer'
    * }
    *
    * @param {*} credentials
@@ -60,11 +57,7 @@ export class Sbanken {
 
     this.credentials.clientId = typeof credentials.clientId === 'string' ? credentials.clientId : '';
     this.credentials.secret = typeof credentials.secret === 'string' ? credentials.secret : '';
-    this.credentials.userId = typeof credentials.userId === 'string' ? credentials.userId : '';
-
-    this.clientCredentials = btoa(
-      encodeURIComponent(this.credentials.clientId) + ':' + encodeURIComponent(this.credentials.secret)
-    );
+    this.credentials.customerId = typeof credentials.customerId === 'string' ? credentials.customerId : '';
 
     this.urls = urls;
     this.version = version;
@@ -132,7 +125,7 @@ export class Sbanken {
    * @param {TransferOptions} options
    * @returns {Promise<fetch.Response>}
    */
-  async transfer(options: TransferOptions): Promise<fetch.Response> {
+  async transfer(options: TransferOptions): Promise<Response> {
     const msg = options.message || `From ${options.from.name} to ${options.to.name}`.slice(0, 30);
     const body: TransferCreateRequest = {
       fromAccountId: options.from.accountId,
@@ -187,35 +180,24 @@ export class Sbanken {
 
     V && log.debug('Fetching transactions. Options:', JSON.stringify(options));
 
-    try {
-      const url = new URL(`${this.urls.transactions.v1}/${accountId}`);
-      V && log.debug('  url:', url.href);
-      url.searchParams.append('length', String(limit || 1000));
+    const url = new URL(`${this.urls.transactions.v1}/${accountId}`);
+    V && log.debug('  url:', url.href);
+    url.searchParams.append('length', String(limit || 1000));
 
-      if (from instanceof Date) {
-        url.searchParams.append('startDate', from.toISOString().slice(0, 10));
-      }
-
-      if (to instanceof Date) {
-        url.searchParams.append('endDate', to.toISOString().slice(0, 10));
-      }
-
-      if (this.opts.verbose) {
-        log.info('Fetching transactions:', url.href);
-      }
-
-      const res = await this.__doRequest(url.href);
-      const json = await res.json();
-
-      if (res.ok) return json;
-
-      console.debug(res.status, res.statusText);
-      console.debug(json.errorType, ':', json.errorMessage);
-      throw new Error(`${res.status} ${res.statusText} - ${json.errorType} ${json.errorMessage}`);
-    } catch (e) {
-      console.log('Got an error for url:', JSON.stringify(e));
-      throw e;
+    if (from instanceof Date) {
+      url.searchParams.append('startDate', from.toISOString().slice(0, 10));
     }
+
+    if (to instanceof Date) {
+      url.searchParams.append('endDate', to.toISOString().slice(0, 10));
+    }
+
+    if (this.opts.verbose) {
+      log.info('Fetching transactions:', url.href);
+    }
+
+    const res = await this.__doRequest(url.href);
+    return res.json();
   }
 
   /**
@@ -225,35 +207,35 @@ export class Sbanken {
    * @param {object=} body An optional body to be submitted.
    * @returns {Promise<Response>}
    */
-  async __doRequest(url: string, body?: TransferCreateRequest): Promise<fetch.Response> {
+  async __doRequest(url: string, body?: TransferCreateRequest): Promise<Response> {
     const method = typeof body === 'undefined' ? 'GET' : 'POST';
     const data = typeof body === 'undefined' ? undefined : JSON.stringify(body);
 
-    const tokenData: AccessTokenData = await accessToken.get(this.credentials);
-    const token = tokenData.info;
+    const token: AccessTokenInfo = await accessToken.get(this.credentials);
 
     if (this.opts.verbose) {
       log.info('Doing request:', method);
     }
 
-    const res: fetch.Response = await fetch.default(url, {
+    const res: Response = await __fetch(url, {
       method: method,
       body: data,
       headers: {
         Authorization: `Bearer ${token.access_token}`,
         Accept: 'application/json',
-        customerId: this.credentials.userId,
+        customerId: this.credentials.customerId,
         'Content-Type': 'application/json',
       },
     });
 
-    if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
+    if (res.ok) return res;
 
-    return res;
+    const json = await res.json();
+    throw new Error(`${res.status} ${res.statusText} - url - ${json}`);
   }
 
   __testCredentials(c: Credentials): boolean {
-    if (typeof c.clientId === 'string' && typeof c.secret === 'string' && typeof c.userId === 'string') {
+    if (typeof c.clientId === 'string' && typeof c.secret === 'string' && typeof c.customerId === 'string') {
       return true;
     }
     return false;

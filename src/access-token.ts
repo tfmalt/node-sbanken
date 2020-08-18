@@ -1,6 +1,6 @@
-// import * as nodeFetch from 'node-fetch';
-import { version } from '../package.json';
 import urls from './sbanken-urls.json';
+import __btoa from './myBtoa';
+import __fetch from './myFetch';
 import { AccessTokenInfo, Credentials } from './node-sbanken';
 
 export interface AccessTokenData {
@@ -8,39 +8,39 @@ export interface AccessTokenData {
   info: AccessTokenInfo;
 }
 
-let ACCESS_TOKEN_DATA: AccessTokenData = {
+let __ACCESS_TOKEN_DATA: AccessTokenData = {
   info: {
     expires_in: 0,
     access_token: '',
     token_type: 'Bearer',
     scope: '',
+    date: new Date('1971-08-26').toJSON(),
+  },
+};
+
+const tokenStore = {
+  info: (info?: AccessTokenInfo): AccessTokenInfo => {
+    if (typeof info !== 'undefined') __ACCESS_TOKEN_DATA.info = info;
+    return __ACCESS_TOKEN_DATA.info;
+  },
+
+  debug: (debug?: { [key: string]: any }): { [key: string]: any } | undefined => {
+    if (typeof debug !== 'undefined') {
+      const newDebug = { ...__ACCESS_TOKEN_DATA.debug, ...debug };
+      __ACCESS_TOKEN_DATA.debug = newDebug;
+    }
+    return __ACCESS_TOKEN_DATA.debug;
+  },
+  isFresh: (): boolean => {
+    const info = tokenStore.info();
+    const then = new Date(info.date as string);
+    const now = new Date();
+
+    return then.getTime() + (info.expires_in - 300) * 1000 > now.getTime();
   },
 };
 
 let DEBUG = false;
-
-function isFresh(): boolean {
-  const info = ACCESS_TOKEN_DATA.info;
-  let infoDate = info.date;
-
-  if (typeof info === 'undefined') return false;
-  if (!info.access_token) return false;
-  if (!infoDate) return false;
-  if (infoDate !== 'string') {
-    infoDate = new Date('1971-26-08').toJSON();
-  }
-
-  const then = new Date(infoDate as string);
-  const now = new Date();
-
-  if (then.getTime() + (info.expires_in - 300) * 1000 > now.getTime()) {
-    if (DEBUG) ACCESS_TOKEN_DATA.debug = { fresh: true };
-    return true;
-  }
-  if (DEBUG) ACCESS_TOKEN_DATA.debug = { fresh: false };
-
-  return false;
-}
 
 const access = {
   debug: (flag?: boolean) => {
@@ -51,58 +51,43 @@ const access = {
     return DEBUG;
   },
 
-  get: async (creds: Credentials): Promise<AccessTokenData> => {
+  get: async (creds: Credentials): Promise<AccessTokenInfo> => {
     // DEBUG && console.log('access-token DEBUG get', JSON.stringify(creds));
-    if (isFresh()) {
-      DEBUG && console.log('access-token fresh:', true);
-      return ACCESS_TOKEN_DATA;
-    }
+    const fresh = tokenStore.isFresh();
+    DEBUG && console.log('access-token fresh:', fresh);
 
-    const params = new URLSearchParams();
-    params.append('grant_type', 'client_credentials');
+    if (fresh) return tokenStore.info();
 
-    // only load btoa if not defined (available in browsers and web workers)
-    const __btoa = typeof btoa === 'undefined' ? require('btoa') : btoa;
-    const __fetch = typeof fetch === 'undefined' ? require('node-fetch') : fetch;
+    DEBUG && console.log('access-token not fresh. fetching...');
 
-    const auth = __btoa(encodeURIComponent(creds.clientId) + ':' + encodeURIComponent(creds.secret));
+    const params = new URLSearchParams({ grant_type: 'client_credentials' });
+
+    const auth = __btoa(`${encodeURIComponent(creds.clientId)}:${encodeURIComponent(creds.secret)}`);
     const init = {
       method: 'post',
       body: params,
       headers: {
         Accept: 'application/json',
-        Authorization: 'Basic ' + auth,
-        'Content-Type': 'application/x-www-form-urlencoded',
-        customerId: creds.userId,
+        Authorization: `Basic ${auth}`,
       },
     };
 
-    DEBUG && console.log('access-token get init:', JSON.stringify(init));
-    DEBUG && console.log('  params:', init.body.toString());
-    DEBUG && console.log('  URL:', urls.auth);
-    DEBUG && console.log('  typeof fetch:', typeof __fetch);
+    // DEBUG && console.log('access-token get init:', JSON.stringify(init));
+    // DEBUG && console.log('  params:', init.body.toString());
 
-    try {
-      const res = await __fetch(urls.auth, init);
-      DEBUG && console.log('access-token fetch:', res.status, res.statusText);
-      // if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      const json = await res.json();
-      json.date = new Date().toJSON();
+    const res = await __fetch(urls.auth, init);
+    DEBUG && console.log('access-token fetch:', res.status, res.statusText);
 
-      ACCESS_TOKEN_DATA.info = json;
+    const json = await res.json();
 
-      if (DEBUG) {
-        if (typeof ACCESS_TOKEN_DATA.debug === 'undefined') ACCESS_TOKEN_DATA.debug = {};
-        ACCESS_TOKEN_DATA.debug.version = version;
-      }
-
-      DEBUG && console.log('access-token get data: ', ACCESS_TOKEN_DATA);
-      return ACCESS_TOKEN_DATA;
-    } catch (e) {
-      console.log('Got error in access token fetch.', e);
+    if (!res.ok) {
+      throw new Error(`${res.status} ${res.statusText} - ${urls.auth} - ${JSON.stringify(json)}`);
     }
 
-    return ACCESS_TOKEN_DATA;
+    json.date = new Date().toJSON();
+    tokenStore.info(json);
+
+    return tokenStore.info();
   },
 };
 
