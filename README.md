@@ -41,7 +41,7 @@ const Sbanken = require('./node-sbanken');
 const credentials = {
   clientId: 'real clientid removed',
   secret: 'real secret removed',
-  userId: 'real userid removed',
+  customerId: 'real customerId removed',
 };
 
 const sbanken = new Sbanken(credentials);
@@ -67,7 +67,7 @@ import * as sb from './node-sbanken';
 const credentials: sb.Credentials = {
   clientId: 'real clientid removed',
   secret: 'real secret removed',
-  userId: 'real userid removed',
+  customerId: 'real customerid removed',
 };
 
 const client = new sb.Sbanken(credentials);
@@ -145,10 +145,10 @@ The command line tool expects you to provide the credentials through the followi
 
 - SBANKEN_SECRET
 - SBANKEN_CLIENTID
-- SBANKEN_USERID
+- SBANKEN_CUSTOMERID
 
 ```bash
-SBANKEN_CLIENTID="add clientid" SBANKEN_SECRET="add secret" SBANKEN_USERID="add userid" npx sbanken
+SBANKEN_CLIENTID="add clientid" SBANKEN_SECRET="add secret" SBANKEN_CUSTOMERID="add userid" npx sbanken
 ```
 
 To use the SDK you need to provide the credentials to the constructor.
