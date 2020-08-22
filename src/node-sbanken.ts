@@ -232,7 +232,7 @@ export class Sbanken {
     if (res.ok) return res;
 
     const json = await res.json();
-    throw new Error(`${res.status} ${res.statusText} - url - ${json}`);
+    throw new Error(`${res.status} ${res.statusText} - ${url} - ${JSON.stringify(json)}`);
   }
 
   __testCredentials(c: Credentials): boolean {

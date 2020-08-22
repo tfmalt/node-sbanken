@@ -90,7 +90,7 @@ async function handleAccounts() {
   if (program.verbose) {
     log.info('Command: List all accounts.');
   }
-  const json: sbanken.AccountListResult = await sb.accounts();
+  const json = await sb.accounts().catch(handleException);
   console.table(json.items);
 }
 
@@ -105,7 +105,7 @@ async function handleAccount(name?: string) {
 
   const str: string = typeof name === 'undefined' ? '' : name;
   const regex: RegExp = new RegExp(str, 'ui');
-  const json: sbanken.AccountListResult = await sb.accounts();
+  const json = await sb.accounts().catch(handleException);
 
   const list: sbanken.Account[] = json.items
     .filter((item: sbanken.Account) => item.name.match(regex))
@@ -130,7 +130,7 @@ async function handleTransfer(amount: string, options: HandleTransferOptions) {
     log.info('Running command transfer', options.from, options.to, amount);
   }
 
-  const accounts: sbanken.AccountListResult = await sb.accounts();
+  const accounts = await sb.accounts().catch(handleException);
   const from: sbanken.Account = findAccountOrExit(accounts, options.from);
   const to: sbanken.Account = findAccountOrExit(accounts, options.to);
   const message = options.message ? options.message.slice(0, 30) : undefined;
@@ -141,13 +141,12 @@ async function handleTransfer(amount: string, options: HandleTransferOptions) {
   );
   console.log(chalk`Message: {magenta.bold ${message}}.`);
 
-  const res = await sb.transfer({ from, to, amount, message });
-
+  const res = await sb.transfer({ from, to, amount, message }).catch(handleException);
   if (!res.ok) return handleRequestError(res);
 
   console.log(chalk`{blue ${res.status}} {white.bold ${res.statusText}} - Transfer successful`);
 
-  const updatedAccounts: sbanken.AccountListResult = await sb.accounts();
+  const updatedAccounts = await sb.accounts().catch(handleException);
   updatedAccounts.items
     .filter((i: sbanken.Account) => {
       if (i.accountId === from.accountId || i.accountId === to.accountId) {
@@ -167,18 +166,16 @@ async function handlePayments(aName: string) {
     log.info('Running command payments');
   }
 
-  const json: sbanken.AccountListResult = await sb.accounts();
+  const json = await sb.accounts().catch(handleException);
   const account: sbanken.Account = findAccountOrExit(json, aName);
 
   if (program.verbose) {
     console.log('account:', account);
   }
 
-  const payments: sbanken.PaymentListResult = await sb.payments(account.accountId);
+  const payments: sbanken.PaymentListResult = await sb.payments(account.accountId).catch(handleException);
 
-  if (program.verbose) {
-    console.log(payments);
-  }
+  program.verbose && console.log(payments);
 
   console.log(
     chalk`name: {yellow ${account.name}}  account number: {yellow ${
@@ -212,10 +209,7 @@ async function handleTransactions(aName: string, options: HandleTransactionsOpti
     log.info(chalk`Running command transactions for name {yellow ${aName}}`);
   }
 
-  const json = await sb.accounts().catch((e) => {
-    console.log(chalk`{red.bold API Error} {white.bold ${e.message}}`);
-    process.exit(1);
-  });
+  const json = await sb.accounts().catch(handleException);
   const account = findAccountOrExit(json, aName);
 
   const from = typeof options.from === 'undefined' ? undefined : new Date(options.from);
@@ -235,7 +229,7 @@ async function handleTransactions(aName: string, options: HandleTransactionsOpti
       limit: options.limit,
     })
     .catch((e) => {
-      console.log(chalk`{red.bold API Error} {yellow.bold ${e.message}}`);
+      console.log(chalk`{red.bold API Error} {white.bold ${e.message}}`);
       process.exit(1);
     });
 
@@ -278,7 +272,7 @@ async function handleCustomers() {
     log.info(chalk`{yellow \uf45f} Fetching customer information. version: {white.bold ${api}}.`);
   }
 
-  const json = await sb.customers(api);
+  const json = await sb.customers(api).catch(handleException);
   const pad = 8;
   console.log('name:'.padEnd(pad), chalk.white.bold(`${json.item.firstName} ${json.item.lastName}`));
 
@@ -302,6 +296,16 @@ async function handleRequestError(res: Response) {
   const json = await res.json();
   console.log(chalk`{red ${res.status}} {white.bold ${res.statusText}} - ${json.errorMessage}`);
 
+  process.exit(1);
+}
+
+/**
+ * General function for printing the error on exceptions and exiting.
+ *
+ * @param {Error} e
+ */
+function handleException(e: Error): never {
+  console.log(chalk`{red.bold API Error} {white.bold ${e.message}}`);
   process.exit(1);
 }
 
