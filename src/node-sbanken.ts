@@ -69,7 +69,7 @@ export class Sbanken {
     };
   }
 
-  private options(opts = {}) {
+  public options(opts = {}) {
     // console.log('Sbanken.options called:', opts);
     this.opts = Object.assign(this.opts, opts);
     accessToken.debug(this.opts.verbose);
@@ -179,7 +179,8 @@ export class Sbanken {
 
     V && log.debug('Fetching transactions. Options:', JSON.stringify(options));
 
-    const url = new URL(`${this.urls.transactions.v1}/${accountId}`);
+    console.log(this.urls.base);
+    const url = new URL(`${this.urls.base}${this.urls.transactions.v1}/archive/${accountId}`);
     V && log.debug('  url:', url.href);
     url.searchParams.append('length', String(limit || 1000));
 
@@ -194,8 +195,8 @@ export class Sbanken {
     if (this.opts.verbose) {
       log.info('Fetching transactions:', url.href);
     }
-
-    const res = await this.__doRequest(url.href);
+    const path = "/" + url.pathname.split("/").slice(2).join("/");
+    const res = await this.__doRequest(path);
     return res.json();
   }
 
@@ -206,14 +207,15 @@ export class Sbanken {
    * @param {object=} body An optional body to be submitted.
    * @returns {Promise<Response>}
    */
-  async __doRequest(url: string, body?: TransferCreateRequest): Promise<Response> {
+  async __doRequest(path: string, body?: TransferCreateRequest): Promise<Response> {
     const method = typeof body === 'undefined' ? 'GET' : 'POST';
     const data = typeof body === 'undefined' ? undefined : JSON.stringify(body);
 
     const token: AccessTokenInfo = await accessToken.get(this.credentials);
+    const url = `${urls.base}${path}`;
 
     if (this.opts.verbose) {
-      log.info('Doing request:', method);
+      log.info('Doing request:', method, url);
     }
 
     const __fetch = typeof fetch === 'undefined' ? require('node-fetch') : fetch;

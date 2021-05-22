@@ -62,21 +62,24 @@ program
   .option('-m --message <message>')
   .action(handleTransfer);
 
-program.on('option:verbose', function () {
-  // @ts-ignore
-  process.env.VERBOSE = this.verbose;
-  // @ts-ignore
-  sb.options({ verbose: this.verbose });
-});
-
 program.on('command:*', function () {
   console.error('Invalid command: %s\nSee --help for a list of available commands.', program.args.join(' '));
   process.exit(1);
 });
 program.parse(process.argv);
 
+
+
 if (!process.argv.slice(2).length) {
   program.help();
+}
+
+const options: program.OptionValues = program.opts();
+
+if (options.verbose) {
+  process.env.VERBOSE = options.verbose;
+  console.log("Setting verbose:", options.verbose);
+  sb.options({ verbose: options.verbose });
 }
 
 // ===========================================================================
@@ -87,7 +90,7 @@ if (!process.argv.slice(2).length) {
  * Fetches all accounts and prints them with the standard console.table output.
  */
 async function handleAccounts() {
-  if (program.verbose) {
+  if (options.verbose) {
     log.info('Command: List all accounts.');
   }
   const json = await sb.accounts().catch(handleException);
@@ -95,7 +98,7 @@ async function handleAccounts() {
 }
 
 async function handleAccount(name?: string) {
-  if (program.verbose) {
+  if (program.opts().verbose) {
     if (typeof name === 'undefined') {
       log.info('Told to list all accounts');
     } else {
@@ -126,7 +129,7 @@ async function handleAccount(name?: string) {
  * @param {Object} options
  */
 async function handleTransfer(amount: string, options: HandleTransferOptions) {
-  if (program.verbose) {
+  if (program.opts().verbose) {
     log.info('Running command transfer', options.from, options.to, amount);
   }
 
@@ -162,20 +165,20 @@ async function handleTransfer(amount: string, options: HandleTransferOptions) {
  * @param aName partial name of the account to fetch payments for
  */
 async function handlePayments(aName: string) {
-  if (program.verbose) {
+  if (program.opts().verbose) {
     log.info('Running command payments');
   }
 
   const json = await sb.accounts().catch(handleException);
   const account: sbanken.Account = findAccountOrExit(json, aName);
 
-  if (program.verbose) {
+  if (program.opts().verbose) {
     console.log('account:', account);
   }
 
   const payments: sbanken.PaymentListResult = await sb.payments(account.accountId).catch(handleException);
 
-  program.verbose && console.log(payments);
+  options.verbose && console.log(payments);
 
   console.log(
     chalk`name: {yellow ${account.name}}  account number: {yellow ${
@@ -204,19 +207,19 @@ async function handlePayments(aName: string) {
  * @param {Object} options
  *
  */
-async function handleTransactions(aName: string, options: HandleTransactionsOptions) {
-  if (program.verbose) {
+async function handleTransactions(aName: string, trOptions: HandleTransactionsOptions) {
+  if (program.opts().verbose) {
     log.info(chalk`Running command transactions for name {yellow ${aName}}`);
   }
 
   const json = await sb.accounts().catch(handleException);
   const account = findAccountOrExit(json, aName);
 
-  const from = typeof options.from === 'undefined' ? undefined : new Date(options.from);
+  const from = typeof trOptions.from === 'undefined' ? undefined : new Date(trOptions.from);
 
-  const to = typeof options.to === 'undefined' ? undefined : new Date(options.to);
+  const to = typeof trOptions.to === 'undefined' ? undefined : new Date(trOptions.to);
 
-  if (program.verbose) {
+  if (program.opts().verbose) {
     log.info('Fetching transactions for account:', account.name);
   }
 
@@ -226,14 +229,14 @@ async function handleTransactions(aName: string, options: HandleTransactionsOpti
       accountId,
       from,
       to,
-      limit: options.limit,
+      limit: trOptions.limit,
     })
     .catch((e) => {
       console.log(chalk`{red.bold API Error} {white.bold ${e.message}}`);
       process.exit(1);
     });
 
-  if (program.verbose) {
+  if (options.verbose) {
     log.info('Available items:', transactions.availableItems);
   }
 
@@ -267,8 +270,8 @@ async function handleTransactions(aName: string, options: HandleTransactionsOpti
 }
 
 async function handleCustomers() {
-  let api = program.api_version || 'v1';
-  if (program.verbose) {
+  let api = options.api_version || 'v1';
+  if (options.verbose) {
     log.info(chalk`{yellow \uf45f} Fetching customer information. version: {white.bold ${api}}.`);
   }
 

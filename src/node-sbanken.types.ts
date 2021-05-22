@@ -20,6 +20,7 @@ export interface Options {
 
 export interface Urls {
   auth: string;
+  base: string;
   customers: {
     [key: string]: string;
   };
