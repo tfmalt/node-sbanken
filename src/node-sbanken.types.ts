@@ -11,7 +11,7 @@ export interface AccessTokenInfo {
 export interface Credentials {
   clientId: string;
   secret: string;
-  customerId: string;
+  customerId?: string;
 }
 
 export interface Options {

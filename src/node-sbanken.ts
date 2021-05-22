@@ -226,7 +226,7 @@ export class Sbanken {
       headers: {
         Authorization: `Bearer ${token.access_token}`,
         Accept: 'application/json',
-        customerId: this.credentials.customerId,
+        // customerId: this.credentials.customerId,
         'Content-Type': 'application/json',
       },
     });
@@ -238,7 +238,7 @@ export class Sbanken {
   }
 
   __testCredentials(c: Credentials): boolean {
-    if (typeof c.clientId === 'string' && typeof c.secret === 'string' && typeof c.customerId === 'string') {
+    if (typeof c.clientId === 'string' && typeof c.secret === 'string') {
       return true;
     }
     return false;

@@ -352,8 +352,7 @@ function printAccountInfoRow(account: sbanken.Account) {
 function getCredentials(): sbanken.Credentials {
   if (
     typeof process.env.SBANKEN_SECRET !== 'string' ||
-    typeof process.env.SBANKEN_CLIENTID !== 'string' ||
-    typeof process.env.SBANKEN_CUSTOMERID !== 'string'
+    typeof process.env.SBANKEN_CLIENTID !== 'string' 
   ) {
     console.log(chalk`{red error} {white Missing credentials - You need to provide them for the app to work.}`);
     process.exit(1);
@@ -361,7 +360,6 @@ function getCredentials(): sbanken.Credentials {
 
   return {
     secret: process.env.SBANKEN_SECRET,
-    clientId: process.env.SBANKEN_CLIENTID,
-    customerId: process.env.SBANKEN_CUSTOMERID,
+    clientId: process.env.SBANKEN_CLIENTID
   };
 }
