@@ -3,6 +3,7 @@ import * as sbanken from './node-sbanken';
 import log from './log';
 import program from 'commander';
 import chalk from 'chalk';
+import { version, author, description } from '../package.json';
 
 interface HandleTransferOptions {
   from: string;
@@ -16,10 +17,7 @@ interface HandleTransactionsOptions {
   limit: number;
 }
 
-const credentials: sbanken.Credentials = getCredentials();
-const sb = new sbanken.Sbanken(credentials);
-
-program.version(sb.version).description(sb.description);
+program.version(version).description(description);
 program.option('-v, --verbose', 'Tell the program to be verbose');
 
 program.command('accounts').description('List all accounts').action(handleAccounts);
@@ -75,6 +73,9 @@ if (!process.argv.slice(2).length) {
 }
 
 const options: program.OptionValues = program.opts();
+
+const credentials: sbanken.Credentials = getCredentials();
+const sb = new sbanken.Sbanken(credentials);
 
 if (options.verbose) {
   process.env.VERBOSE = options.verbose;
