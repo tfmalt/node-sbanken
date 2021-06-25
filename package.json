@@ -30,6 +30,7 @@
     "sbanken": "node ./dist/src/cli.js",
     "test": "true",
     "build": "tsc",
+    "clean": "rm -rf ./dist",
     "prepare": "npm run build",
     "prepublishOnly": "npm test"
   },

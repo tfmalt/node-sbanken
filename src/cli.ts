@@ -17,9 +17,16 @@ interface HandleTransactionsOptions {
   limit: number;
 }
 
-program.version(version).description(description);
-program.option('-v, --verbose', 'Tell the program to be verbose');
+const credentials: sbanken.Credentials = getCredentials();
+const sb = new sbanken.Sbanken(credentials);
 
+program.version(version).description(description);
+
+if (!process.argv.slice(2).length) {
+  program.help();
+}
+
+program.option('-v, --verbose', 'Tell the program to be verbose');
 program.command('accounts').description('List all accounts').action(handleAccounts);
 
 program
@@ -68,19 +75,12 @@ program.parse(process.argv);
 
 
 
-if (!process.argv.slice(2).length) {
-  program.help();
-}
-
 const options: program.OptionValues = program.opts();
 
-const credentials: sbanken.Credentials = getCredentials();
-const sb = new sbanken.Sbanken(credentials);
-
 if (options.verbose) {
-  process.env.VERBOSE = options.verbose;
-  console.log("Setting verbose:", options.verbose);
-  sb.options({ verbose: options.verbose });
+   process.env.VERBOSE = options.verbose;
+   console.log("Setting verbose:", options.verbose);
+   sb.options({ verbose: options.verbose });
 }
 
 // ===========================================================================
@@ -309,6 +309,7 @@ async function handleRequestError(res: Response) {
  * @param {Error} e
  */
 function handleException(e: Error): never {
+  console.log(version);
   console.log(chalk`{red.bold API Error} {white.bold ${e.message}}`);
   process.exit(1);
 }
@@ -355,6 +356,7 @@ function getCredentials(): sbanken.Credentials {
     typeof process.env.SBANKEN_SECRET !== 'string' ||
     typeof process.env.SBANKEN_CLIENTID !== 'string' 
   ) {
+    console.log(version);
     console.log(chalk`{red error} {white Missing credentials - You need to provide them for the app to work.}`);
     process.exit(1);
   }
