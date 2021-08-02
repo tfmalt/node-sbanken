@@ -80,7 +80,7 @@ export class Sbanken {
    *
    * @param {string} version
    */
-  async customers(version: string = 'v1'): Promise<CustomerItemResult> {
+  async customers(version: string = 'v2'): Promise<CustomerItemResult> {
     if (this.opts.verbose) {
       log.info('Fetching:', this.urls.customers[version]);
     }
@@ -106,10 +106,10 @@ export class Sbanken {
    */
   async accounts(): Promise<AccountListResult> {
     if (this.opts.verbose) {
-      log.info('Fetching accounts:', this.urls.accounts.v1);
+      log.info('Fetching accounts:', this.urls.accounts.v2);
     }
 
-    const res = await this.__doRequest(this.urls.accounts.v1);
+    const res = await this.__doRequest(this.urls.accounts.v2);
 
     if (this.opts.verbose) {
       log.info('  Status code:', res.status, res.statusText);
@@ -133,10 +133,12 @@ export class Sbanken {
       amount: parseFloat(options.amount),
     };
 
-    if (this.opts.verbose) log.info('Fetching:', this.urls.transfer.v1);
+    const path: string = this.urls.transfer.v2;
+
+    if (this.opts.verbose) log.info('Fetching:', path);
     if (this.opts.verbose) log.debug('body:', JSON.stringify(body));
 
-    const res = await this.__doRequest(this.urls.transfer.v1, body);
+    const res = await this.__doRequest(path, body);
 
     if (res.ok) return res;
     if (res.status === 400) return res;
@@ -151,7 +153,7 @@ export class Sbanken {
    * @param accountId
    */
   async payments(accountId: string) {
-    const url = `${this.urls.payments.v1}/${accountId}`;
+    const url = `${this.urls.payments.v2}/${accountId}`;
 
     if (this.opts.verbose) {
       console.log('Fetching Payments:', { accountId, url });
@@ -198,7 +200,10 @@ export class Sbanken {
     if (this.opts.verbose) {
       log.info('Fetching transactions:', url.href);
     }
-    const path = '/' + url.pathname.split('/').slice(2).join('/');
+    // The first part of pathname is part of the URL, so we need to remove it
+    // need to append the search parameters to the path
+    const path = '/' + url.pathname.split('/').slice(2).join('/') + url.search;
+
     const res = await this.__doRequest(path);
     return res.json();
   }
