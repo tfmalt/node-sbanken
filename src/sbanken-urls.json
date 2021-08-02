@@ -2,28 +2,38 @@
   "auth": "https://auth.sbanken.no/identityserver/connect/token",
   "base": "https://publicapi.sbanken.no/apibeta",
   "accounts": {
-    "v1": "/api/v1/accounts"
+    "v1": "/api/v1/accounts",
+    "v2": "/api/v2/accounts"
   },
   "cards": {
-    "v1": "/api/v1/cards"
+    "v1": "/api/v1/cards",
+    "v2": "/api/v2/cards"
   },
   "customers": {
     "v1": "/api/v1/customers",
     "v2": "/api/v2/customers"
   },
   "efaktura": {
-    "v1": "/api/v1/efaktura"
+    "v1": "/api/v1/efaktura",
+    "v2": "/api/v2/efaktura"
+  },
+  "mailbox": {
+    "v2": "/api/v2/mailbox"
   },
   "payments": {
-    "v1": "/api/v1/Payments"
+    "v1": "/api/v1/Payments",
+    "v2": "/api/v2/Payments"
   },
   "standingorders": {
-    "v1": "/api/v1/standingorders"
+    "v1": "/api/v1/standingorders",
+    "v2": "/api/v2/standingorders"
   },
   "transactions": {
-    "v1": "/api/v1/transactions"
+    "v1": "/api/v1/transactions",
+    "v2": "/api/v2/transactions"
   },
   "transfer": {
-    "v1": "/api/v1/Transfers"
+    "v1": "/api/v1/transfers",
+    "v2": "/api/v2/transfers"
   }
 }

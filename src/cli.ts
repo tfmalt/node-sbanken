@@ -73,14 +73,12 @@ program.on('command:*', function () {
 });
 program.parse(process.argv);
 
-
-
 const options: program.OptionValues = program.opts();
 
 if (options.verbose) {
-   process.env.VERBOSE = options.verbose;
-   console.log("Setting verbose:", options.verbose);
-   sb.options({ verbose: options.verbose });
+  process.env.VERBOSE = options.verbose;
+  console.log('Setting verbose:', options.verbose);
+  sb.options({ verbose: options.verbose });
 }
 
 // ===========================================================================
@@ -352,10 +350,7 @@ function printAccountInfoRow(account: sbanken.Account) {
  * @returns {sbanken.Credentials}
  */
 function getCredentials(): sbanken.Credentials {
-  if (
-    typeof process.env.SBANKEN_SECRET !== 'string' ||
-    typeof process.env.SBANKEN_CLIENTID !== 'string' 
-  ) {
+  if (typeof process.env.SBANKEN_SECRET !== 'string' || typeof process.env.SBANKEN_CLIENTID !== 'string') {
     console.log(version);
     console.log(chalk`{red error} {white Missing credentials - You need to provide them for the app to work.}`);
     process.exit(1);
@@ -363,6 +358,6 @@ function getCredentials(): sbanken.Credentials {
 
   return {
     secret: process.env.SBANKEN_SECRET,
-    clientId: process.env.SBANKEN_CLIENTID
+    clientId: process.env.SBANKEN_CLIENTID,
   };
 }
