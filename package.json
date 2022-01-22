@@ -47,7 +47,7 @@
     "btoa": "^1.2.1",
     "chalk": "^4.1.1",
     "commander": "^7.2.0",
-    "node-fetch": "^2.5.0"
+    "node-fetch": "^3.1.1"
   },
   "volta": {
     "node": "14.17.1",
