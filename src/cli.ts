@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import * as sbanken from './node-sbanken';
 import log from './log';
-import program from 'commander';
+import { Command } from 'commander';
 import chalk from 'chalk';
 import { version, author, description } from '../package.json';
 
@@ -17,6 +17,7 @@ interface HandleTransactionsOptions {
   limit: number;
 }
 
+const program = new Command();
 const credentials: sbanken.Credentials = getCredentials();
 const sb = new sbanken.Sbanken(credentials);
 
@@ -73,7 +74,7 @@ program.on('command:*', function () {
 });
 program.parse(process.argv);
 
-const options: program.OptionValues = program.opts();
+const options = program.opts();
 
 if (options.verbose) {
   process.env.VERBOSE = options.verbose;
@@ -89,7 +90,7 @@ if (options.verbose) {
  * Fetches all accounts and prints them with the standard console.table output.
  */
 async function handleAccounts() {
-  if (options.verbose) {
+  if (program.opts().verbose) {
     log.info('Command: List all accounts.');
   }
   const json = await sb.accounts().catch(handleException);
