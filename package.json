@@ -1,6 +1,6 @@
 {
   "name": "node-sbanken",
-  "version": "2.7.3",
+  "version": "2.7.4",
   "description": "A module wrapping the Sbanken REST APIs, and a command line tool to do banking from the terminal.",
   "keywords": [
     "api",
