@@ -1,7 +1,6 @@
 # SBanken API Wrapper (SDK) and a command line tool
 
 [![npm version](https://badge.fury.io/js/node-sbanken.svg)](http://badge.fury.io/js/node-sbanken)
-[![Build Status](https://travis-ci.org/tfmalt/node-sbanken.svg?branch=master)](https://travis-ci.org/tfmalt/node-sbanken)
 
 ## API Wrapper (SDK)
 
