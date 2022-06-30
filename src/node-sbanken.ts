@@ -181,7 +181,6 @@ export class Sbanken {
 
     V && log.debug('Fetching transactions. Options:', JSON.stringify(options));
 
-    console.log(this.urls.base);
     const url = new URL(`${this.urls.base}${this.urls.transactions.v2}/${accountId}`);
     V && log.debug('  url:', url.href);
     url.searchParams.append('length', String(limit || 1000));
