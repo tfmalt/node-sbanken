@@ -126,6 +126,10 @@ export interface PaymentListResult {
   traceId: string | null;
 }
 
+export interface PaymentListResultWithAccount {
+  account: Account;
+  paymentList: PaymentListResult;
+}
 export interface CustomerItemResult {
   item: Customer;
 }

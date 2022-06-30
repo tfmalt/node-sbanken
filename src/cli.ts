@@ -54,7 +54,7 @@ program
   .action(handleTransactions);
 
 program
-  .command('payments <name>')
+  .command('payments [name]')
   .alias('pa')
   .description('Print payments waiting to be processed.')
   .usage('<name>')
@@ -164,42 +164,84 @@ async function handleTransfer(amount: string, options: HandleTransferOptions) {
  *
  * @param aName partial name of the account to fetch payments for
  */
-async function handlePayments(aName: string) {
-  if (program.opts().verbose) {
-    log.info('Running command payments');
+async function handlePayments(aName?: string) {
+  const str: string = typeof aName === 'undefined' ? '' : aName;
+  const regex: RegExp = new RegExp(str, 'ui');
+
+  const json: sbanken.AccountListResult = await sb.accounts().catch(handleException);
+  // const account: sbanken.Account = findAccountOrExit(json, aName);
+
+  const payments = (
+    await Promise.all(
+      json.items
+        .filter((item: sbanken.Account) => item.name.match(regex))
+        .map(async (account) => {
+          const paymentList = await sb.payments(account.accountId).catch(handleException);
+          return { account, paymentList };
+        })
+    )
+  )
+    .map((i) => i.paymentList.items.map((p: any) => Object.assign(p, i.account)))
+    .flat();
+
+  aName = typeof aName === 'undefined' ? 'all accounts' : aName;
+  console.log(chalk`showing payments for: {yellow ${aName}}\n`);
+  if (payments.length === 0) {
+    console.log('no payments found');
+    return;
   }
-
-  const json = await sb.accounts().catch(handleException);
-  const account: sbanken.Account = findAccountOrExit(json, aName);
-
-  if (program.opts().verbose) {
-    console.log('account:', account);
-  }
-
-  const payments: sbanken.PaymentListResult = await sb.payments(account.accountId).catch(handleException);
-
-  options.verbose && console.log(payments);
 
   console.log(
-    chalk`name: {yellow ${account.name}}  account number: {yellow ${
-      account.accountNumber
-    }}  balance: {white.bold ${account.available.toFixed(2)}}`
+    'Date'.padEnd(10),
+    ' Account'.padEnd(16),
+    'Balance'.padStart(11),
+    'Amount'.padStart(11),
+    ' Type'.padEnd(11),
+    ' Recipient'
   );
-  console.log();
-  payments.items
-    .sort((a: sbanken.Payment, b: sbanken.Payment) => (new Date(a.dueDate) > new Date(b.dueDate) ? 1 : -1))
-    .forEach((item) => {
-      const bName = item.beneficiaryName || '';
+  console.log(
+    `${'-'.padEnd(10, '-')}  ${'-'.padEnd(15, '-')}  ${'-'.padStart(10, '-')}  ${'-'.padStart(10, '-')}  ${'-'.padEnd(
+      10,
+      '-'
+    )}  ${'-'.padEnd(40, '-')}`
+  );
+  //  options.verbose && console.debug(payments);
+
+  payments
+    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+    .forEach((i) => {
+      const date = new Date(i.dueDate).toLocaleDateString('se');
+      const balance = i.balance.toFixed(2).padStart(10);
+      const amount = i.amount.toFixed(2).padStart(10);
+      const name = i.name.slice(0, 15).padEnd(15);
+      const type = i.productType.slice(0, 10).padEnd(10);
+      const text = i.beneficiaryName === null ? i.recipientAccountNumber : i.beneficiaryName.slice(0, 40);
 
       console.log(
-        new Date(item.dueDate).toLocaleDateString('se').padEnd(11),
-        chalk`{red.bold ${item.amount.toFixed(2).padStart(11)}}`,
-        chalk`{cyan ${item.productType.padStart(11).padEnd(12)}}`,
-        chalk`${bName.padEnd(52)}`
+        chalk`${date}  {yellow ${name}}  {white.bold ${balance}}  {red.bold ${amount}}  {cyan ${type}}  ${text}`
       );
     });
-  // console.log(payments);
-  console.log();
+
+  //  console.log(
+  //    chalk`name: {yellow ${account.name}}  account number: {yellow ${
+  //      account.accountNumber
+  //    }}  balance: {white.bold ${account.available.toFixed(2)}}`
+  //  );
+  //  console.log();
+  //  payments.items
+  //    .sort((a: sbanken.Payment, b: sbanken.Payment) => (new Date(a.dueDate) > new Date(b.dueDate) ? 1 : -1))
+  //    .forEach((item) => {
+  //      const bName = item.beneficiaryName || '';
+  //
+  //       console.log(
+  //         new Date(item.dueDate).toLocaleDateString('se').padEnd(11),
+  //         chalk`{red.bold ${item.amount.toFixed(2).padStart(11)}}`,
+  //         chalk`{cyan ${item.productType.padStart(11).padEnd(12)}}`,
+  //         chalk`${bName.padEnd(52)}`
+  //       );
+  //     });
+  //   // console.log(payments);
+  //   console.log();
 }
 
 /**
@@ -245,28 +287,20 @@ async function handleTransactions(aName: string, trOptions: HandleTransactionsOp
     chalk`name: {white.bold ${name}}  account number: {white.bold ${accountNumber}}  balance: {white.bold ${balance}}`
   );
 
-  console.log('Date'.padEnd(11), 'Amount'.padStart(11), ' Type'.padEnd(21), 'Description'.padEnd(40));
-
-  console.log(
-    '---------- ',
-    '----------- ',
-    '------------------- ',
-    '---------------------------------------------------'
-  );
+  console.log('Date'.padEnd(11), 'Amount'.padStart(11), ' Type'.padEnd(16), ' Description'.padEnd(60));
+  console.log(' '.padStart(11, '-'), ' '.padStart(12, '-'), ' '.padStart(16, '-'), '-'.padStart(60, '-'));
 
   transactions.items.forEach((item: sbanken.Transaction) => {
-    let line = item.accountingDate.substr(0, 10) + ' ';
-    let amount: number | string = parseFloat(item.amount);
+    const date = item.accountingDate.substr(0, 10) + ' ';
+    const aFloat: number = parseFloat(item.amount);
+    const amount =
+      aFloat < 0 ? chalk.bold.red(aFloat.toFixed(2).padStart(10)) : chalk.bold.green(aFloat.toFixed(2).padStart(10));
 
-    amount =
-      amount < 0 ? chalk.bold.red(amount.toFixed(2).padStart(12)) : chalk.bold.green(amount.toFixed(2).padStart(12));
+    const code = item.transactionTypeCode.toString().padStart(4);
+    const type = item.transactionType.padEnd(10);
+    const text = item.text.slice(0, 60);
 
-    line += amount + ' ';
-    line += chalk.bold.yellow(item.transactionTypeCode.toString().padStart(4));
-    line += ' ' + item.transactionType.padEnd(15) + '  ';
-    line += item.text;
-
-    console.log(line);
+    console.log(chalk`${date}  ${amount}  {yellow.bold ${code}} ${type}  ${text}`);
   });
 }
 
