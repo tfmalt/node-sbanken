@@ -190,8 +190,9 @@ async function handlePayments(aName: string) {
     .sort((a: sbanken.Payment, b: sbanken.Payment) => (new Date(a.dueDate) > new Date(b.dueDate) ? 1 : -1))
     .forEach((item) => {
       const bName = item.beneficiaryName || '';
+
       console.log(
-        item.dueDate.slice(0, 10).padEnd(11),
+        new Date(item.dueDate).toLocaleDateString('se').padEnd(11),
         chalk`{red.bold ${item.amount.toFixed(2).padStart(11)}}`,
         chalk`{cyan ${item.productType.padStart(11).padEnd(12)}}`,
         chalk`${bName.padEnd(52)}`
