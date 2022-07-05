@@ -97,6 +97,11 @@ async function handleAccounts() {
   console.table(json.items);
 }
 
+/**
+ * Prints list of accounts matching the provided name.
+ *
+ * @param name - Name of the account to find.
+ */
 async function handleAccount(name?: string) {
   if (program.opts().verbose) {
     if (typeof name === 'undefined') {
@@ -106,6 +111,8 @@ async function handleAccount(name?: string) {
     }
   }
 
+  console.log(chalk`Showing accounts matching: {yellow.bold ${name ? name : 'all accounts'}}\n`);
+
   const str: string = typeof name === 'undefined' ? '' : name;
   const regex: RegExp = new RegExp(str, 'ui');
   const json = await sb.accounts().catch(handleException);
@@ -114,11 +121,32 @@ async function handleAccount(name?: string) {
     .filter((item: sbanken.Account) => item.name.match(regex))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  if (list.length > 0) {
-    list.forEach((item) => printAccountInfoRow(item));
-  } else {
-    console.log(chalk`Could not find an account with {red ${name}} in name.`);
+  if (list.length === 0) {
+    console.log(chalk`No accounts with {red ${name}} in name found.`);
+    return;
   }
+
+  console.log('Account Name'.padEnd(30), ' Account'.padEnd(14), 'Available'.padStart(15), 'Balance'.padStart(15));
+  console.log('-'.repeat(30), '', '-'.repeat(13), '', '-'.repeat(14), '', '-'.repeat(14));
+
+  list.forEach((item) => printAccountInfoRow(item));
+  const sums = list.reduce(
+    (a, i) => {
+      a[0] += i.available;
+      a[1] += i.balance;
+
+      return a;
+    },
+    [0, 0]
+  );
+
+  console.log(' '.repeat(46), '-'.repeat(14), '', '-'.repeat(14));
+  console.log(
+    ' '.repeat(45),
+    sums[0].toFixed(2).concat(' kr').padStart(15),
+    sums[1].toFixed(2).concat(' kr').padStart(15)
+  );
+  console.log('');
 }
 
 /**
@@ -185,7 +213,7 @@ async function handlePayments(aName?: string) {
     .flat();
 
   aName = typeof aName === 'undefined' ? 'all accounts' : aName;
-  console.log(chalk`showing payments for: {yellow ${aName}}\n`);
+  console.log(chalk`Showing payments matching: {yellow ${aName}}\n`);
   if (payments.length === 0) {
     console.log('no payments found');
     return;
@@ -193,55 +221,34 @@ async function handlePayments(aName?: string) {
 
   console.log(
     'Date'.padEnd(10),
-    ' Account'.padEnd(16),
+    ' Account'.padEnd(21),
     'Balance'.padStart(11),
     'Amount'.padStart(11),
     ' Type'.padEnd(11),
     ' Recipient'
   );
   console.log(
-    `${'-'.padEnd(10, '-')}  ${'-'.padEnd(15, '-')}  ${'-'.padStart(10, '-')}  ${'-'.padStart(10, '-')}  ${'-'.padEnd(
-      10,
-      '-'
-    )}  ${'-'.padEnd(40, '-')}`
+    `${'-'.repeat(10)}  ${'-'.repeat(20)}  ${'-'.repeat(10)}  ${'-'.repeat(10)}  ${'-'.repeat(10)}  ${'-'.repeat(30)}`
   );
-  //  options.verbose && console.debug(payments);
 
   payments
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
     .forEach((i) => {
-      const date = new Date(i.dueDate).toLocaleDateString('se');
-      const balance = i.balance.toFixed(2).padStart(10);
-      const amount = i.amount.toFixed(2).padStart(10);
-      const name = i.name.slice(0, 15).padEnd(15);
-      const type = i.productType.slice(0, 10).padEnd(10);
-      const text = i.beneficiaryName === null ? i.recipientAccountNumber : i.beneficiaryName.slice(0, 40);
-
       console.log(
-        chalk`${date}  {yellow ${name}}  {white.bold ${balance}}  {red.bold ${amount}}  {cyan ${type}}  ${text}`
+        new Date(i.dueDate).toLocaleDateString('se'),
+        '',
+        chalk.blue(i.name.slice(0, 20).padEnd(20)),
+        i.balance < i.amount
+          ? chalk.yellow(i.balance.toFixed(2).padStart(11))
+          : chalk.whiteBright(i.balance.toFixed(2).padStart(11)),
+        chalk.redBright(i.amount.toFixed(2).padStart(11)),
+        '',
+        chalk.cyan(i.productType.slice(0, 10).padEnd(10)),
+        '',
+        i.beneficiaryName === null ? i.recipientAccountNumber : i.beneficiaryName.slice(0, 40)
       );
     });
-
-  //  console.log(
-  //    chalk`name: {yellow ${account.name}}  account number: {yellow ${
-  //      account.accountNumber
-  //    }}  balance: {white.bold ${account.available.toFixed(2)}}`
-  //  );
-  //  console.log();
-  //  payments.items
-  //    .sort((a: sbanken.Payment, b: sbanken.Payment) => (new Date(a.dueDate) > new Date(b.dueDate) ? 1 : -1))
-  //    .forEach((item) => {
-  //      const bName = item.beneficiaryName || '';
-  //
-  //       console.log(
-  //         new Date(item.dueDate).toLocaleDateString('se').padEnd(11),
-  //         chalk`{red.bold ${item.amount.toFixed(2).padStart(11)}}`,
-  //         chalk`{cyan ${item.productType.padStart(11).padEnd(12)}}`,
-  //         chalk`${bName.padEnd(52)}`
-  //       );
-  //     });
-  //   // console.log(payments);
-  //   console.log();
+  console.log('');
 }
 
 /**
@@ -371,11 +378,23 @@ function findAccountOrExit(accounts: sbanken.AccountListResult, name: string) {
   return list[0];
 }
 
+/**
+ * Prints info about an account to the console.
+ *
+ * @param account sbanken.Account
+ */
 function printAccountInfoRow(account: sbanken.Account) {
+  const a = account.accountNumber;
+  const number = [a.slice(0, 4), a.slice(4, 6), a.slice(6)].join('.');
   console.log(
-    account.name.padEnd(32),
-    chalk.white.bold(`${account.available.toFixed(2)} kr`.padStart(15)),
-    chalk.yellow(`${account.balance.toFixed(2)} kr`.padStart(15))
+    account.name.padEnd(31),
+    chalk.yellow(number),
+    account.available < 0
+      ? chalk.red(`${account.available.toFixed(2)} kr`.padStart(15))
+      : chalk.cyanBright(`${account.available.toFixed(2)} kr`.padStart(15)),
+    account.balance < 0
+      ? chalk.redBright(`${account.balance.toFixed(2)} kr`.padStart(15))
+      : chalk.greenBright(`${account.balance.toFixed(2)} kr`.padStart(15))
   );
 }
 
